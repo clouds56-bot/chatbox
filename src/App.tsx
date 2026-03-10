@@ -7,9 +7,9 @@ import { MessageBubble } from '@/components/MessageBubble'
 import { MessageInput } from '@/components/MessageInput'
 import { EndpointsDialog } from '@/components/EndpointsDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
+import { ChatHeader } from '@/components/widgets/ChatHeader'
+import { EmptyState } from '@/components/widgets/EmptyState'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Button } from '@/components/ui/button'
-import { ListBullets } from '@phosphor-icons/react'
 import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -280,57 +280,25 @@ function App() {
         />
 
         <div className="flex-1 flex flex-col">
-          <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm">
-            <div className="flex flex-col">
-              <h1 className="text-xl font-bold">
-                {currentConversation?.title || 'AI Chat'}
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                {selectedEndpoint ? `${selectedEndpoint.name} • ${selectedEndpoint.modelName}` : 'No endpoint configured'}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setEndpointsOpen(true)}
-              className="hover:bg-accent/20"
-            >
-              <ListBullets weight="bold" className="w-5 h-5" />
-            </Button>
-          </div>
+          <ChatHeader
+            title={currentConversation?.title || 'AI Chat'}
+            endpoint={selectedEndpoint}
+            onSettingsClick={() => setEndpointsOpen(true)}
+          />
 
           <ScrollArea className="flex-1" ref={scrollRef}>
             <div className="max-w-4xl mx-auto p-6 space-y-4">
               {safeEndpoints.length === 0 && (
-                <div className="flex items-center justify-center h-[60vh] text-center">
-                  <div className="space-y-3">
-                    <h2 className="text-3xl font-bold text-foreground">
-                      Configure an endpoint
-                    </h2>
-                    <p className="text-muted-foreground text-lg">
-                      Add at least one model endpoint to start chatting
-                    </p>
-                    <Button
-                      onClick={() => setEndpointsOpen(true)}
-                      className="mt-4 bg-primary hover:bg-primary/90"
-                    >
-                      <ListBullets weight="bold" className="w-4 h-4 mr-2" />
-                      Manage Endpoints
-                    </Button>
-                  </div>
-                </div>
+                <EmptyState
+                  type="no-endpoints"
+                  onConfigureClick={() => setEndpointsOpen(true)}
+                />
               )}
               {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
-                <div className="flex items-center justify-center h-[60vh] text-center">
-                  <div className="space-y-3">
-                    <h2 className="text-3xl font-bold text-foreground">
-                      Start a conversation
-                    </h2>
-                    <p className="text-muted-foreground text-lg">
-                      Send a message to begin chatting with {selectedEndpoint?.name || 'your selected model'}
-                    </p>
-                  </div>
-                </div>
+                <EmptyState
+                  type="no-messages"
+                  endpointName={selectedEndpoint?.name}
+                />
               )}
               {currentConversation?.messages.map(message => {
                 const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
