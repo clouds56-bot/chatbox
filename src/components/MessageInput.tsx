@@ -50,24 +50,24 @@ export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, 
 
   return (
     <div className="border-t border-border bg-background/95 backdrop-blur-sm">
-      <div className="flex gap-3 items-end p-4">
-        <div className="flex-1 space-y-2">
-          <div className="flex gap-2">
-            <EndpointSelector
-              endpoints={endpoints}
-              selectedEndpoint={selectedEndpoint}
-              onSelect={handleEndpointChange}
-              disabled={disabled}
-              open={popoverOpen}
-              onOpenChange={setPopoverOpen}
-            />
-            <ModelSelector
-              models={enabledModels}
-              selectedModel={currentModel || ''}
-              onSelect={handleModelSelect}
-              disabled={disabled}
-            />
-          </div>
+      <div className="flex flex-col gap-2 p-3 md:p-4">
+        <div className="flex gap-2">
+          <EndpointSelector
+            endpoints={endpoints}
+            selectedEndpoint={selectedEndpoint}
+            onSelect={handleEndpointChange}
+            disabled={disabled}
+            open={popoverOpen}
+            onOpenChange={setPopoverOpen}
+          />
+          <ModelSelector
+            models={enabledModels}
+            selectedModel={currentModel || ''}
+            onSelect={handleModelSelect}
+            disabled={disabled}
+          />
+        </div>
+        <div className="flex gap-2 items-end">
           <Textarea
             id="message-input"
             value={input}
@@ -75,18 +75,18 @@ export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, 
             onKeyDown={handleKeyDown}
             placeholder="Send a message..."
             disabled={disabled || !selectedEndpoint}
-            className="min-h-[60px] max-h-[200px] resize-none bg-card border-input focus-visible:ring-accent"
+            className="min-h-[60px] max-h-[200px] resize-none bg-card border-input focus-visible:ring-accent flex-1"
             rows={1}
           />
+          <Button
+            onClick={handleSubmit}
+            disabled={!input.trim() || disabled || !selectedEndpoint}
+            size="icon"
+            className="h-[60px] w-[60px] flex-shrink-0 bg-primary hover:bg-primary/90"
+          >
+            <PaperPlaneRight weight="bold" className="w-5 h-5" />
+          </Button>
         </div>
-        <Button
-          onClick={handleSubmit}
-          disabled={!input.trim() || disabled || !selectedEndpoint}
-          size="icon"
-          className="h-[60px] w-[60px] flex-shrink-0 bg-primary hover:bg-primary/90"
-        >
-          <PaperPlaneRight weight="bold" className="w-5 h-5" />
-        </Button>
       </div>
     </div>
   )

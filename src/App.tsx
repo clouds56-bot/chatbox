@@ -10,8 +10,10 @@ import { OAuthCallback } from '@/components/OAuthCallback'
 import { ChatHeader } from '@/components/widgets/ChatHeader'
 import { EmptyState } from '@/components/widgets/EmptyState'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 function App() {
   if (window.location.pathname === '/oauth/callback') {
@@ -23,9 +25,11 @@ function App() {
   const [endpoints, setEndpoints] = useKV<EndpointConfig[]>('endpoints', [])
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
   const [endpointsOpen, setEndpointsOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const isMobile = useIsMobile()
 
   const safeConversations = conversations ?? []
   const safeEndpoints = endpoints ?? []
@@ -287,27 +291,58 @@ function App() {
 
   const selectedEndpoint = safeEndpoints.find(e => e.id === selectedEndpointId) || defaultEndpoint
 
+  const handleSelectConversation = (id: string) => {
+    setCurrentConversationId(id)
+    if (isMobile) {
+      setSidebarOpen(false)
+    }
+  }
+
+  const handleNewConversation = () => {
+    createNewConversation()
+    if (isMobile) {
+      setSidebarOpen(false)
+    }
+  }
+
   return (
     <>
       <Toaster position="top-right" />
       <div className="flex h-screen bg-background text-foreground">
-        <ConversationSidebar
-          conversations={safeConversations}
-          currentConversationId={currentConversationId}
-          onSelectConversation={setCurrentConversationId}
-          onNewConversation={createNewConversation}
-          onDeleteConversation={deleteConversation}
-        />
+        {!isMobile && (
+          <ConversationSidebar
+            conversations={safeConversations}
+            currentConversationId={currentConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onDeleteConversation={deleteConversation}
+          />
+        )}
 
-        <div className="flex-1 flex flex-col">
+        {isMobile && (
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" className="p-0 w-72">
+              <ConversationSidebar
+                conversations={safeConversations}
+                currentConversationId={currentConversationId}
+                onSelectConversation={handleSelectConversation}
+                onNewConversation={handleNewConversation}
+                onDeleteConversation={deleteConversation}
+              />
+            </SheetContent>
+          </Sheet>
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0">
           <ChatHeader
             title={currentConversation?.title || 'AI Chat'}
             endpoint={selectedEndpoint}
             onSettingsClick={() => setEndpointsOpen(true)}
+            onMenuClick={isMobile ? () => setSidebarOpen(true) : undefined}
           />
 
           <ScrollArea className="flex-1">
-            <div className="max-w-4xl mx-auto p-6 space-y-4">
+            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
               {safeEndpoints.length === 0 && (
                 <EmptyState
                   type="no-endpoints"

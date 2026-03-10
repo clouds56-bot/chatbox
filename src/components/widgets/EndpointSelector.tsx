@@ -36,9 +36,9 @@ export function EndpointSelector({
           <CaretDown className="ml-2 w-3 h-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-2" align="start">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Select Endpoint</p>
+      <PopoverContent className="w-[85vw] max-w-80 p-2" align="start">
+        <div className="space-y-1 max-h-[50vh] overflow-y-auto">
+          <p className="text-xs font-semibold text-muted-foreground px-2 py-1 sticky top-0 bg-popover">Select Endpoint</p>
           {endpoints.map((endpoint) => (
             <button
               key={endpoint.id}
@@ -55,14 +55,14 @@ export function EndpointSelector({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{endpoint.name}</p>
+                    <p className="text-sm font-medium truncate">{endpoint.name}</p>
                     {endpoint.isDefault && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
                         Default
                       </Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {endpoint.modelName}
                   </p>
                 </div>

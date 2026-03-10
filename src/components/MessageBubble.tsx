@@ -19,11 +19,11 @@ export function MessageBubble({ message, endpoint }: MessageBubbleProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15 }}
-      className={cn('flex gap-4 w-full', isUser && 'flex-row-reverse')}
+      className={cn('flex gap-3 md:gap-4 w-full', isUser && 'flex-row-reverse')}
     >
       <MessageAvatar isUser={isUser} />
 
-      <div className="flex flex-col gap-2 max-w-[85%]">
+      <div className="flex flex-col gap-2 max-w-[85%] md:max-w-[80%] min-w-0">
         {!isUser && <MessageMetadata endpoint={endpoint} />}
         {!isUser && message.thinking && (
           <ThinkingSection 

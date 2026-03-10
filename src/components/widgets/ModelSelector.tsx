@@ -25,9 +25,9 @@ export function ModelSelector({ models, selectedModel, onSelect, disabled }: Mod
           <CaretDown className="ml-2 w-3 h-3" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="start">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Select Model</p>
+      <PopoverContent className="w-[75vw] max-w-64 p-2" align="start">
+        <div className="space-y-1 max-h-[40vh] overflow-y-auto">
+          <p className="text-xs font-semibold text-muted-foreground px-2 py-1 sticky top-0 bg-popover">Select Model</p>
           {models.map((model) => (
             <button
               key={model}
@@ -39,9 +39,9 @@ export function ModelSelector({ models, selectedModel, onSelect, disabled }: Mod
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <p className="text-sm">{model}</p>
+                <p className="text-sm truncate">{model}</p>
                 {selectedModel === model && (
-                  <CheckCircle weight="fill" className="w-4 h-4 text-accent" />
+                  <CheckCircle weight="fill" className="w-4 h-4 text-accent flex-shrink-0" />
                 )}
               </div>
             </button>
