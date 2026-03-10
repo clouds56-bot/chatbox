@@ -6,13 +6,17 @@ import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
 import { MessageInput } from '@/components/MessageInput'
 import { SettingsDialog } from '@/components/SettingsDialog'
+import { OAuthCallback } from '@/components/OAuthCallback'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Gear } from '@phosphor-icons/react'
-import { toast } from 'sonner'
+import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 
 function App() {
+  if (window.location.pathname === '/oauth/callback') {
+    return <OAuthCallback />
+  }
   const [conversations, setConversations] = useKV<Conversation[]>('conversations', [])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [config, setConfig] = useKV<ModelConfig>('model-config', {
@@ -47,6 +51,25 @@ function App() {
     } else if (!currentConversationId) {
       setCurrentConversationId(safeConversations[0].id)
     }
+  }, [])
+
+  useEffect(() => {
+    const handleOAuthMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return
+
+      if (event.data.type === 'oauth-success') {
+        setConfig(current => ({
+          ...(current ?? safeConfig),
+          oauthToken: event.data.token
+        }))
+        toast.success('Successfully connected to GitHub!')
+      } else if (event.data.type === 'oauth-error') {
+        toast.error(event.data.error || 'OAuth authentication failed')
+      }
+    }
+
+    window.addEventListener('message', handleOAuthMessage)
+    return () => window.removeEventListener('message', handleOAuthMessage)
   }, [])
 
   useEffect(() => {
@@ -232,73 +255,76 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
-      <ConversationSidebar
-        conversations={safeConversations}
-        currentConversationId={currentConversationId}
-        onSelectConversation={setCurrentConversationId}
-        onNewConversation={createNewConversation}
-        onDeleteConversation={deleteConversation}
-      />
+    <>
+      <Toaster position="top-right" />
+      <div className="flex h-screen bg-background text-foreground">
+        <ConversationSidebar
+          conversations={safeConversations}
+          currentConversationId={currentConversationId}
+          onSelectConversation={setCurrentConversationId}
+          onNewConversation={createNewConversation}
+          onDeleteConversation={deleteConversation}
+        />
 
-      <div className="flex-1 flex flex-col">
-        <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm">
-          <div className="flex flex-col">
-            <h1 className="text-xl font-bold">
-              {currentConversation?.title || 'AI Chat'}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {safeConfig.provider === 'openai' && 'OpenAI'}
-              {safeConfig.provider === 'z-ai' && 'z.ai'}
-              {safeConfig.provider === 'copilot' && 'GitHub Copilot'}
-              {safeConfig.provider === 'localhost' && 'Localhost'}
-              {safeConfig.provider === 'custom' && 'Custom'}
-              {' • '}{safeConfig.modelName || 'No model configured'}
-            </p>
+        <div className="flex-1 flex flex-col">
+          <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm">
+            <div className="flex flex-col">
+              <h1 className="text-xl font-bold">
+                {currentConversation?.title || 'AI Chat'}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {safeConfig.provider === 'openai' && 'OpenAI'}
+                {safeConfig.provider === 'z-ai' && 'z.ai'}
+                {safeConfig.provider === 'copilot' && 'GitHub Copilot'}
+                {safeConfig.provider === 'localhost' && 'Localhost'}
+                {safeConfig.provider === 'custom' && 'Custom'}
+                {' • '}{safeConfig.modelName || 'No model configured'}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSettingsOpen(true)}
+              className="hover:bg-accent/20"
+            >
+              <Gear weight="bold" className="w-5 h-5" />
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSettingsOpen(true)}
-            className="hover:bg-accent/20"
-          >
-            <Gear weight="bold" className="w-5 h-5" />
-          </Button>
+
+          <ScrollArea className="flex-1" ref={scrollRef}>
+            <div className="max-w-4xl mx-auto p-6 space-y-4">
+              {currentConversation?.messages.length === 0 && (
+                <div className="flex items-center justify-center h-[60vh] text-center">
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-bold text-foreground">
+                      Start a conversation
+                    </h2>
+                    <p className="text-muted-foreground text-lg">
+                      Send a message to begin chatting with your configured AI model
+                    </p>
+                  </div>
+                </div>
+              )}
+              {currentConversation?.messages.map(message => (
+                <MessageBubble key={message.id} message={message} />
+              ))}
+            </div>
+          </ScrollArea>
+
+          <MessageInput onSend={handleSendMessage} disabled={isStreaming} />
         </div>
 
-        <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="max-w-4xl mx-auto p-6 space-y-4">
-            {currentConversation?.messages.length === 0 && (
-              <div className="flex items-center justify-center h-[60vh] text-center">
-                <div className="space-y-3">
-                  <h2 className="text-3xl font-bold text-foreground">
-                    Start a conversation
-                  </h2>
-                  <p className="text-muted-foreground text-lg">
-                    Send a message to begin chatting with your configured AI model
-                  </p>
-                </div>
-              </div>
-            )}
-            {currentConversation?.messages.map(message => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-          </div>
-        </ScrollArea>
-
-        <MessageInput onSend={handleSendMessage} disabled={isStreaming} />
+        <SettingsDialog
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+          config={safeConfig}
+          onSave={(newConfig) => {
+            setConfig(newConfig)
+            toast.success('Configuration saved')
+          }}
+        />
       </div>
-
-      <SettingsDialog
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-        config={safeConfig}
-        onSave={(newConfig) => {
-          setConfig(newConfig)
-          toast.success('Configuration saved')
-        }}
-      />
-    </div>
+    </>
   )
 }
 

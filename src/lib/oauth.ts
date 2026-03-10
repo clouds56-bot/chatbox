@@ -18,7 +18,16 @@ export async function initiateGitHubOAuth(): Promise<void> {
     scope: 'read:user'
   })
 
-  window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`
+  const width = 600
+  const height = 700
+  const left = window.screen.width / 2 - width / 2
+  const top = window.screen.height / 2 - height / 2
+
+  window.open(
+    `https://github.com/login/oauth/authorize?${params.toString()}`,
+    'GitHub OAuth',
+    `width=${width},height=${height},left=${left},top=${top},popup=yes`
+  )
 }
 
 export async function handleOAuthCallback(code: string, state: string): Promise<OAuthToken> {
