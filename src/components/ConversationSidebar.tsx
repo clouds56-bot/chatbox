@@ -22,15 +22,21 @@ export function ConversationSidebar({
     <div className="w-64 border-r border-border bg-muted flex flex-col h-full">
       <div className="p-3 border-b border-border">
         <NewChatButton onClick={onNewConversation} />
+      </div>
+      
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {conversations.map((conversation) => (
+            <ConversationListItem
               key={conversation.id}
               conversation={conversation}
               isActive={currentConversationId === conversation.id}
               onSelect={() => onSelectConversation(conversation.id)}
               onDelete={() => onDeleteConversation(conversation.id)}
-            <ConversationListItem
-          ))}
-              conversation={conversation}
-              isActive={currentConversationId === conversation.id}
-              onSelect={() => onSelectConversation(conversation.id)}
-              onDelete={() => onDeleteConversation(conversation.id)}
             />
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  )
+}
