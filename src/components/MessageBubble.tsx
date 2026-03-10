@@ -4,14 +4,26 @@ import { Card } from '@/components/ui/card'
 import { Robot, User } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
+import { marked } from 'marked'
 
 interface MessageBubbleProps {
   message: Message
 }
 
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+})
+
 export function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const isError = message.error
+
+  const formattedContent = useMemo(() => {
+    if (!message.content) return ''
+    return marked.parse(message.content, { async: false }) as string
+  }, [message.content])
 
   return (
     <motion.div
@@ -37,16 +49,17 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           isError && 'border-destructive bg-destructive/10'
         )}
       >
-        <div className="whitespace-pre-wrap text-[15px] leading-relaxed">
-          {message.content}
-          {message.isStreaming && (
-            <motion.span
-              animate={{ opacity: [1, 0] }}
-              transition={{ duration: 0.8, repeat: Infinity }}
-              className="inline-block w-2 h-4 ml-1 bg-accent"
-            />
-          )}
-        </div>
+        <div
+          className="markdown-content text-[15px] leading-relaxed"
+          dangerouslySetInnerHTML={{ __html: formattedContent }}
+        />
+        {message.isStreaming && (
+          <motion.span
+            animate={{ opacity: [1, 0] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+            className="inline-block w-2 h-4 ml-1 bg-accent"
+          />
+        )}
       </Card>
     </motion.div>
   )

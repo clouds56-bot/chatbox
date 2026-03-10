@@ -47,6 +47,13 @@ This is a chat interface with message management, model configuration, and persi
 - **Progression**: First token arrives → Message container appears → Tokens append in real-time → Stream completes → Final message rendered
 - **Success criteria**: Smooth streaming with no flickering, handles interruptions gracefully
 
+### Markdown Formatting
+- **Functionality**: Render markdown syntax in messages including code blocks, lists, headers, links, and text formatting
+- **Purpose**: Enable rich formatting for technical content, structured information, and code snippets
+- **Trigger**: Messages containing markdown syntax are automatically rendered
+- **Progression**: Message received → Markdown parsed → Rendered with proper styling → Displayed in message bubble
+- **Success criteria**: All common markdown elements render correctly, code blocks have syntax highlighting-ready styling, maintains readability
+
 ## Edge Case Handling
 
 - **Empty Messages** - Disable send button when input is empty or only whitespace
@@ -106,7 +113,8 @@ Animations should enhance the feeling of intelligence and responsiveness - parti
   - `Avatar` for user and AI message attribution
   
 - **Customizations**:
-  - Custom message components with markdown rendering support
+  - Custom message components with markdown rendering using `marked` library
+  - Styled markdown elements: code blocks with dark backgrounds, proper heading hierarchy, formatted lists and tables
   - Streaming text component with cursor animation
   - Sidebar conversation list with hover actions (rename, delete)
   - Settings panel with tabbed sections for different providers
