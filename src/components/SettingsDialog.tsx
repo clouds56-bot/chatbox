@@ -1,12 +1,16 @@
 import { useState, useEffect } from 'react'
 import { ModelConfig, ProviderType } from '@/lib/types'
 import { PROVIDER_PRESETS, getProviderPreset } from '@/lib/providers'
+import { initiateGitHubOAuth } from '@/lib/oauth'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { GithubLogo, Check } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
 interface SettingsDialogProps {
   open: boolean
@@ -30,20 +34,34 @@ export function SettingsDialog({ open, onOpenChange, config, onSave }: SettingsD
         provider: preset.type,
         apiEndpoint: preset.endpoint,
         modelName: preset.defaultModel,
-        apiKey: providerType === 'localhost' ? '' : localConfig.apiKey
+        authMethod: preset.authMethod,
+        apiKey: preset.authMethod === 'none' ? '' : localConfig.apiKey,
+        oauthToken: preset.authMethod === 'oauth' ? localConfig.oauthToken : undefined
       })
+    }
+  }
+
+  const handleGitHubOAuth = async () => {
+    try {
+      await initiateGitHubOAuth()
+    } catch (error) {
+      toast.error('Failed to initiate GitHub OAuth')
+      console.error(error)
     }
   }
 
   const currentPreset = getProviderPreset(localConfig.provider)
   const isCustomProvider = localConfig.provider === 'custom'
+  const isOAuthProvider = currentPreset?.authMethod === 'oauth'
+  const showApiKeyField = currentPreset?.authMethod === 'api-key'
+  const isAuthenticated = isOAuthProvider 
+    ? !!localConfig.oauthToken 
+    : (showApiKeyField ? !!localConfig.apiKey : true)
 
   const handleSave = () => {
     onSave(localConfig)
     onOpenChange(false)
   }
-
-  const showApiKeyField = !currentPreset || currentPreset.requiresApiKey
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -66,7 +84,14 @@ export function SettingsDialog({ open, onOpenChange, config, onSave }: SettingsD
                 {PROVIDER_PRESETS.map((preset) => (
                   <SelectItem key={preset.type} value={preset.type}>
                     <div className="flex flex-col items-start">
-                      <span className="font-medium">{preset.name}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{preset.name}</span>
+                        {preset.supportsOAuth && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            OAuth
+                          </Badge>
+                        )}
+                      </div>
                       <span className="text-xs text-muted-foreground">{preset.description}</span>
                     </div>
                   </SelectItem>
@@ -74,6 +99,41 @@ export function SettingsDialog({ open, onOpenChange, config, onSave }: SettingsD
               </SelectContent>
             </Select>
           </div>
+
+          {isOAuthProvider && (
+            <div className="space-y-3">
+              <Label>Authentication</Label>
+              {isAuthenticated ? (
+                <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent rounded-md">
+                  <Check weight="bold" className="w-5 h-5 text-accent" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Connected</p>
+                    <p className="text-xs text-muted-foreground">
+                      You're authenticated with GitHub
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setLocalConfig({ ...localConfig, oauthToken: undefined })}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={handleGitHubOAuth}
+                  className="w-full bg-[#24292e] hover:bg-[#1a1e22] text-white"
+                >
+                  <GithubLogo weight="fill" className="w-5 h-5 mr-2" />
+                  Connect with GitHub
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                GitHub OAuth is required to use GitHub Copilot API
+              </p>
+            </div>
+          )}
 
           <Separator className="bg-border" />
 

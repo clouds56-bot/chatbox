@@ -1,4 +1,5 @@
 import { ModelConfig } from './types'
+import { getAuthorizationHeader } from './oauth'
 
 export async function sendMessage(
   message: string,
@@ -11,12 +12,19 @@ export async function sendMessage(
     { role: 'user', content: message }
   ]
 
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json'
+  }
+
+  if (config.authMethod === 'api-key' && config.apiKey) {
+    headers['Authorization'] = `Bearer ${config.apiKey}`
+  } else if (config.authMethod === 'oauth' && config.oauthToken) {
+    headers['Authorization'] = getAuthorizationHeader(config.oauthToken)
+  }
+
   const response = await fetch(config.apiEndpoint, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${config.apiKey}`
-    },
+    headers,
     body: JSON.stringify({
       model: config.modelName,
       messages,

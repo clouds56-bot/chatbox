@@ -27,11 +27,11 @@ This is a chat interface with message management, model configuration, and persi
 - **Success criteria**: Messages are clearly attributed, readable, and maintain chronological order
 
 ### Model Configuration
-- **Functionality**: Interface to select/configure API endpoint, model name, and API key
-- **Purpose**: Allow connection to different LLM providers (OpenAI, z.ai, GitHub Copilot, localhost, or custom endpoints)
+- **Functionality**: Interface to select/configure API endpoint, model name, API key, and provider-specific authentication methods (OAuth for GitHub Copilot, API keys for OpenAI/z.ai, no auth for localhost)
+- **Purpose**: Allow connection to different LLM providers with appropriate authentication method for each provider
 - **Trigger**: User opens settings/config panel
-- **Progression**: User clicks config button → Modal opens → User selects provider preset or custom → Optionally enters/modifies endpoint URL, model name, API key → Saves configuration → Settings persist for future sessions
-- **Success criteria**: Settings save reliably, support various API formats, provide validation feedback, preset providers auto-configure endpoints
+- **Progression**: User clicks config button → Modal opens → User selects provider preset or custom → If OAuth provider, user clicks "Connect with GitHub" button → OAuth flow initiated → User authenticates → Token stored → Optionally enters/modifies endpoint URL, model name → Saves configuration → Settings persist for future sessions
+- **Success criteria**: Settings save reliably, OAuth flow completes successfully, API keys securely stored, support various API formats, provide validation feedback, preset providers auto-configure endpoints and auth methods
 
 ### Conversation Management
 - **Functionality**: Start new conversations, view/switch between conversation history
@@ -60,11 +60,13 @@ This is a chat interface with message management, model configuration, and persi
 - **API Errors** - Display clear error messages inline in chat (authentication failures, network issues, invalid endpoints)
 - **Long Messages** - Support very long user inputs and AI responses with proper text wrapping and scrolling
 - **Connection Loss** - Show connection status and allow retry of failed messages
-- **Invalid Configuration** - Validate API settings before allowing messages to be sent, provide helpful error hints
+- **Invalid Configuration** - Validate API settings before allowing messages to be sent, provide helpful error hints, check OAuth token expiry and refresh if needed
 - **Rapid Sending** - Prevent duplicate sends while a message is processing
 - **Conversation Limits** - Handle storage limits gracefully, potentially archiving old conversations
 - **Localhost Connections** - Automatically skip API key requirement for localhost provider, handle CORS and connection errors gracefully
-- **Provider Switching** - Preserve API keys when switching between providers, warn if switching mid-conversation
+- **Provider Switching** - Preserve API keys and OAuth tokens when switching between providers, warn if switching mid-conversation
+- **OAuth Flow Interruption** - Handle cases where OAuth window is closed or authorization denied, provide clear error messages and retry options
+- **Token Expiration** - Detect expired OAuth tokens and prompt re-authentication, automatically attempt token refresh when available
 
 ## Design Direction
 

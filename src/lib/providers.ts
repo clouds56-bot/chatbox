@@ -7,6 +7,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     endpoint: 'https://api.openai.com/v1/chat/completions',
     defaultModel: 'gpt-4o',
     requiresApiKey: true,
+    authMethod: 'api-key',
     description: 'Official OpenAI API with GPT models',
     models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo']
   },
@@ -16,6 +17,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     endpoint: 'https://api.z.ai/v1/chat/completions',
     defaultModel: 'z-1',
     requiresApiKey: true,
+    authMethod: 'api-key',
     description: 'z.ai API endpoint',
     models: ['z-1', 'z-1-mini']
   },
@@ -24,8 +26,10 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     type: 'copilot',
     endpoint: 'https://api.githubcopilot.com/chat/completions',
     defaultModel: 'gpt-4',
-    requiresApiKey: true,
-    description: 'GitHub Copilot Chat API',
+    requiresApiKey: false,
+    authMethod: 'oauth',
+    supportsOAuth: true,
+    description: 'GitHub Copilot Chat API (OAuth)',
     models: ['gpt-4', 'gpt-3.5-turbo']
   },
   {
@@ -34,6 +38,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     endpoint: 'http://localhost:1234/v1/chat/completions',
     defaultModel: 'local-model',
     requiresApiKey: false,
+    authMethod: 'none',
     description: 'Local LLM server (LM Studio, Ollama, etc.)',
     models: ['local-model']
   },
@@ -43,6 +48,7 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
     endpoint: '',
     defaultModel: '',
     requiresApiKey: true,
+    authMethod: 'api-key',
     description: 'Custom API endpoint',
     models: []
   }

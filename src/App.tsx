@@ -20,6 +20,7 @@ function App() {
     apiEndpoint: 'https://api.openai.com/v1/chat/completions',
     modelName: 'gpt-4o',
     apiKey: '',
+    authMethod: 'api-key',
     temperature: 0.7,
     maxTokens: 2000
   })
@@ -33,6 +34,7 @@ function App() {
     apiEndpoint: 'https://api.openai.com/v1/chat/completions',
     modelName: 'gpt-4o',
     apiKey: '',
+    authMethod: 'api-key' as const,
     temperature: 0.7,
     maxTokens: 2000
   }
@@ -95,8 +97,18 @@ function App() {
   }
 
   const handleSendMessage = async (content: string) => {
-    if (!safeConfig.apiKey && safeConfig.provider !== 'localhost') {
+    const isApiKeyMethod = safeConfig.authMethod === 'api-key'
+    const isOAuthMethod = safeConfig.authMethod === 'oauth'
+    const isNoneMethod = safeConfig.authMethod === 'none'
+
+    if (isApiKeyMethod && !safeConfig.apiKey) {
       toast.error('Please configure your API key in settings')
+      setSettingsOpen(true)
+      return
+    }
+
+    if (isOAuthMethod && !safeConfig.oauthToken) {
+      toast.error('Please authenticate with OAuth in settings')
       setSettingsOpen(true)
       return
     }

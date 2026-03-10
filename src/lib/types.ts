@@ -16,12 +16,22 @@ export interface Conversation {
 }
 
 export type ProviderType = 'openai' | 'z-ai' | 'copilot' | 'localhost' | 'custom'
+export type AuthMethod = 'api-key' | 'oauth' | 'none'
+
+export interface OAuthToken {
+  accessToken: string
+  refreshToken?: string
+  expiresAt?: number
+  tokenType: string
+}
 
 export interface ModelConfig {
   provider: ProviderType
   apiEndpoint: string
   modelName: string
   apiKey: string
+  authMethod: AuthMethod
+  oauthToken?: OAuthToken
   temperature?: number
   maxTokens?: number
 }
@@ -32,6 +42,8 @@ export interface ProviderPreset {
   endpoint: string
   defaultModel: string
   requiresApiKey: boolean
+  authMethod: AuthMethod
+  supportsOAuth?: boolean
   description: string
   models?: string[]
 }
