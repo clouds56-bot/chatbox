@@ -1,18 +1,37 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Brain, CaretDown } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
+import { marked } from 'marked'
 
 interface ThinkingSectionProps {
   thinking: string
   isStreaming?: boolean
+  hasContent?: boolean
 }
 
-export function ThinkingSection({ thinking, isStreaming }: ThinkingSectionProps) {
+export function ThinkingSection({ thinking, isStreaming, hasContent }: ThinkingSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
 
+  useEffect(() => {
+    if (!hasContent && thinking) {
+      setIsOpen(true)
+    } else if (hasContent && !isStreaming) {
+      setIsOpen(false)
+    }
+  }, [hasContent, thinking, isStreaming])
+
   if (!thinking) return null
+
+  const renderThinking = () => {
+    try {
+      const html = marked.parse(thinking, { async: false }) as string
+      return <div className="text-sm text-muted-foreground markdown-content" dangerouslySetInnerHTML={{ __html: html }} />
+    } catch {
+      return <div className="text-sm text-muted-foreground whitespace-pre-wrap">{thinking}</div>
+    }
+  }
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -46,9 +65,7 @@ export function ThinkingSection({ thinking, isStreaming }: ThinkingSectionProps)
       </CollapsibleTrigger>
       <CollapsibleContent className="pt-2">
         <div className="px-3 py-2 rounded-lg bg-muted/30 border border-border/50">
-          <div className="text-sm text-muted-foreground whitespace-pre-wrap font-mono leading-relaxed">
-            {thinking}
-          </div>
+          {renderThinking()}
         </div>
       </CollapsibleContent>
     </Collapsible>

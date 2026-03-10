@@ -223,6 +223,7 @@ function App() {
                           : { 
                               ...m, 
                               content: m.content + token,
+                              isStreaming: true,
                               isThinkingStreaming: false 
                             }
                         : m

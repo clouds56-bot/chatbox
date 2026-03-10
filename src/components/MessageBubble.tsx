@@ -29,6 +29,7 @@ export function MessageBubble({ message, endpoint }: MessageBubbleProps) {
           <ThinkingSection 
             thinking={message.thinking} 
             isStreaming={message.isThinkingStreaming}
+            hasContent={!!message.content}
           />
         )}
         <MessageContent
