@@ -118,7 +118,7 @@ function App() {
     )
   }
 
-  const handleSendMessage = async (content: string, endpointId: string) => {
+  const handleSendMessage = async (content: string, endpointId: string, modelName?: string) => {
     const endpoint = safeEndpoints.find(e => e.id === endpointId)
     
     if (!endpoint) {
@@ -142,6 +142,8 @@ function App() {
     }
 
     if (!currentConversationId) return
+
+    const actualModelName = modelName || endpoint.modelName
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -196,10 +198,12 @@ function App() {
         content: m.content
       })) || []
 
+      const endpointWithModel = { ...endpoint, modelName: actualModelName }
+
       await sendMessage(
         content,
         conversationHistory,
-        endpoint,
+        endpointWithModel,
         (token: string) => {
           setConversations(current =>
             (current ?? []).map(c =>

@@ -49,6 +49,8 @@ export interface EndpointConfig {
   temperature?: number
   maxTokens?: number
   isDefault?: boolean
+  availableModels?: string[]
+  enabledModels?: string[]
 }
 
 export interface ProviderPreset {

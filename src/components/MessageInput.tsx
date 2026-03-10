@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { CheckCircle } from '@phosphor-icons/react'
 
 interface MessageInputProps {
-  onSend: (message: string, endpointId: string) => void
+  onSend: (message: string, endpointId: string, modelName?: string) => void
   disabled?: boolean
   endpoints: EndpointConfig[]
   selectedEndpointId: string | null
@@ -18,13 +18,18 @@ interface MessageInputProps {
 export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, onEndpointChange }: MessageInputProps) {
   const [input, setInput] = useState('')
   const [popoverOpen, setPopoverOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<string | null>(null)
 
   const selectedEndpoint = endpoints.find(e => e.id === selectedEndpointId) || endpoints.find(e => e.isDefault) || endpoints[0]
+  
+  const enabledModels = selectedEndpoint?.enabledModels || selectedEndpoint?.availableModels || []
+  const hasMultipleModels = enabledModels.length > 1
+  const currentModel = selectedModel || selectedEndpoint?.modelName
 
   const handleSubmit = () => {
     const trimmed = input.trim()
     if (trimmed && !disabled && selectedEndpoint) {
-      onSend(trimmed, selectedEndpoint.id)
+      onSend(trimmed, selectedEndpoint.id, currentModel)
       setInput('')
     }
   }
@@ -38,65 +43,108 @@ export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, 
 
   const handleEndpointSelect = (endpointId: string) => {
     onEndpointChange(endpointId)
+    setSelectedModel(null)
     setPopoverOpen(false)
+  }
+
+  const handleModelSelect = (model: string) => {
+    setSelectedModel(model)
   }
 
   return (
     <div className="border-t border-border bg-background/95 backdrop-blur-sm">
       <div className="flex gap-3 items-end p-4">
         <div className="flex-1 space-y-2">
-          {endpoints.length > 1 && (
-            <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs hover:bg-accent/20"
-                  disabled={disabled}
-                >
-                  <span className="font-medium">{selectedEndpoint?.name || 'Select Model'}</span>
-                  <span className="mx-1.5 text-muted-foreground">•</span>
-                  <span className="text-muted-foreground">{selectedEndpoint?.modelName}</span>
-                  <CaretDown className="ml-2 w-3 h-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-2" align="start">
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Select Endpoint</p>
-                  {endpoints.map((endpoint) => (
-                    <button
-                      key={endpoint.id}
-                      onClick={() => handleEndpointSelect(endpoint.id)}
-                      className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
-                        selectedEndpoint?.id === endpoint.id
-                          ? 'bg-accent/20'
-                          : 'hover:bg-accent/10'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-medium">{endpoint.name}</p>
-                            {endpoint.isDefault && (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
-                                Default
-                              </Badge>
-                            )}
+          <div className="flex gap-2">
+            {endpoints.length > 1 && (
+              <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs hover:bg-accent/20"
+                    disabled={disabled}
+                  >
+                    <span className="font-medium">{selectedEndpoint?.name || 'Select Endpoint'}</span>
+                    <CaretDown className="ml-2 w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-2" align="start">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Select Endpoint</p>
+                    {endpoints.map((endpoint) => (
+                      <button
+                        key={endpoint.id}
+                        onClick={() => handleEndpointSelect(endpoint.id)}
+                        className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                          selectedEndpoint?.id === endpoint.id
+                            ? 'bg-accent/20'
+                            : 'hover:bg-accent/10'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium">{endpoint.name}</p>
+                              {endpoint.isDefault && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                  Default
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {endpoint.modelName}
+                            </p>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {endpoint.modelName}
-                          </p>
+                          {selectedEndpoint?.id === endpoint.id && (
+                            <CheckCircle weight="fill" className="w-4 h-4 text-accent flex-shrink-0" />
+                          )}
                         </div>
-                        {selectedEndpoint?.id === endpoint.id && (
-                          <CheckCircle weight="fill" className="w-4 h-4 text-accent flex-shrink-0" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+            {hasMultipleModels && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs hover:bg-accent/20"
+                    disabled={disabled}
+                  >
+                    <span className="text-muted-foreground">{currentModel}</span>
+                    <CaretDown className="ml-2 w-3 h-3" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-64 p-2" align="start">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-muted-foreground px-2 py-1">Select Model</p>
+                    {enabledModels.map((model) => (
+                      <button
+                        key={model}
+                        onClick={() => handleModelSelect(model)}
+                        className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
+                          currentModel === model
+                            ? 'bg-accent/20'
+                            : 'hover:bg-accent/10'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm">{model}</p>
+                          {currentModel === model && (
+                            <CheckCircle weight="fill" className="w-4 h-4 text-accent" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
           <Textarea
             id="message-input"
             value={input}

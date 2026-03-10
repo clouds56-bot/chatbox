@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { EndpointConfig, ProviderType } from '@/lib/types'
 import { PROVIDER_PRESETS, getProviderPreset } from '@/lib/providers'
 import { initiateGitHubOAuth, isTokenExpired } from '@/lib/oauth'
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { GithubLogo, Check, Clock, Trash, Plus, PencilSimple, CheckCircle } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -27,18 +28,25 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<EndpointConfig | null>(null)
 
+  useEffect(() => {
+    setLocalEndpoints(endpoints)
+  }, [endpoints])
+
   const handleAddNew = () => {
+    const preset = PROVIDER_PRESETS[0]
     const newEndpoint: EndpointConfig = {
       id: uuidv4(),
-      name: 'New Endpoint',
-      provider: 'openai',
-      apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-      modelName: 'gpt-4o',
+      name: preset.name,
+      provider: preset.type,
+      apiEndpoint: preset.endpoint,
+      modelName: preset.defaultModel,
       apiKey: '',
-      authMethod: 'api-key',
+      authMethod: preset.authMethod,
       temperature: 0.7,
       maxTokens: 2000,
-      isDefault: localEndpoints.length === 0
+      isDefault: localEndpoints.length === 0,
+      availableModels: preset.models || [],
+      enabledModels: preset.models || []
     }
     setEditForm(newEndpoint)
     setEditingId(newEndpoint.id)
@@ -68,14 +76,18 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
     if (!editForm) return
     const preset = getProviderPreset(providerType)
     if (preset) {
+      const defaultName = preset.type === 'custom' ? editForm.name : preset.name
       setEditForm({
         ...editForm,
+        name: defaultName,
         provider: preset.type,
         apiEndpoint: preset.endpoint,
         modelName: preset.defaultModel,
         authMethod: preset.authMethod,
         apiKey: preset.authMethod === 'none' ? '' : editForm.apiKey,
-        oauthToken: preset.authMethod === 'oauth' ? editForm.oauthToken : undefined
+        oauthToken: preset.authMethod === 'oauth' ? editForm.oauthToken : undefined,
+        availableModels: preset.models || [],
+        enabledModels: preset.models || []
       })
     }
   }
@@ -93,13 +105,17 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
     if (!editForm) return
 
     const isNew = !localEndpoints.some(e => e.id === editForm.id)
+    let updatedEndpoints: EndpointConfig[]
     if (isNew) {
-      setLocalEndpoints([...localEndpoints, editForm])
+      updatedEndpoints = [...localEndpoints, editForm]
     } else {
-      setLocalEndpoints(localEndpoints.map(e => e.id === editForm.id ? editForm : e))
+      updatedEndpoints = localEndpoints.map(e => e.id === editForm.id ? editForm : e)
     }
+    setLocalEndpoints(updatedEndpoints)
+    onSave(updatedEndpoints)
     setEditForm(null)
     setEditingId(null)
+    toast.success('Endpoint saved')
   }
 
   const handleCancelEdit = () => {
@@ -112,9 +128,21 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
       toast.error('Add at least one endpoint')
       return
     }
+    if (editForm) {
+      toast.error('Please save or cancel the current endpoint edit')
+      return
+    }
     onSave(localEndpoints)
     onOpenChange(false)
-    toast.success('Endpoints saved')
+  }
+
+  const handleToggleModel = (model: string) => {
+    if (!editForm) return
+    const enabledModels = editForm.enabledModels || []
+    const newEnabledModels = enabledModels.includes(model)
+      ? enabledModels.filter(m => m !== model)
+      : [...enabledModels, model]
+    setEditForm({ ...editForm, enabledModels: newEnabledModels })
   }
 
   const currentPreset = editForm ? getProviderPreset(editForm.provider) : null
@@ -302,7 +330,7 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="model-name">Model Name</Label>
+                  <Label htmlFor="model-name">Default Model</Label>
                   {currentPreset?.models && currentPreset.models.length > 0 && !isCustomProvider ? (
                     <Select 
                       value={editForm.modelName} 
@@ -329,6 +357,33 @@ export function EndpointsDialog({ open, onOpenChange, endpoints, onSave }: Endpo
                     />
                   )}
                 </div>
+
+                {currentPreset?.models && currentPreset.models.length > 1 && !isCustomProvider && (
+                  <div className="space-y-2">
+                    <Label>Available Models</Label>
+                    <p className="text-xs text-muted-foreground">Select which models to enable for this endpoint</p>
+                    <div className="space-y-2 border border-border rounded-md p-3 max-h-40 overflow-y-auto">
+                      {currentPreset.models.map((model) => {
+                        const isEnabled = editForm.enabledModels?.includes(model) ?? true
+                        return (
+                          <div key={model} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`model-${model}`}
+                              checked={isEnabled}
+                              onCheckedChange={() => handleToggleModel(model)}
+                            />
+                            <Label 
+                              htmlFor={`model-${model}`} 
+                              className="text-sm font-normal cursor-pointer flex-1"
+                            >
+                              {model}
+                            </Label>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {showApiKeyField && (
                   <div className="space-y-2">
