@@ -28,10 +28,10 @@ This is a chat interface with message management, model configuration, and persi
 
 ### Model Configuration
 - **Functionality**: Interface to select/configure API endpoint, model name, and API key
-- **Purpose**: Allow connection to different LLM providers (OpenAI, Anthropic, local models, etc.)
+- **Purpose**: Allow connection to different LLM providers (OpenAI, z.ai, GitHub Copilot, localhost, or custom endpoints)
 - **Trigger**: User opens settings/config panel
-- **Progression**: User clicks config button → Modal/panel opens → User enters endpoint URL, model name, API key → Saves configuration → Settings persist for future sessions
-- **Success criteria**: Settings save reliably, support various API formats, provide validation feedback
+- **Progression**: User clicks config button → Modal opens → User selects provider preset or custom → Optionally enters/modifies endpoint URL, model name, API key → Saves configuration → Settings persist for future sessions
+- **Success criteria**: Settings save reliably, support various API formats, provide validation feedback, preset providers auto-configure endpoints
 
 ### Conversation Management
 - **Functionality**: Start new conversations, view/switch between conversation history
@@ -63,6 +63,8 @@ This is a chat interface with message management, model configuration, and persi
 - **Invalid Configuration** - Validate API settings before allowing messages to be sent, provide helpful error hints
 - **Rapid Sending** - Prevent duplicate sends while a message is processing
 - **Conversation Limits** - Handle storage limits gracefully, potentially archiving old conversations
+- **Localhost Connections** - Automatically skip API key requirement for localhost provider, handle CORS and connection errors gracefully
+- **Provider Switching** - Preserve API keys when switching between providers, warn if switching mid-conversation
 
 ## Design Direction
 

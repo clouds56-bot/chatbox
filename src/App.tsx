@@ -16,8 +16,9 @@ function App() {
   const [conversations, setConversations] = useKV<Conversation[]>('conversations', [])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [config, setConfig] = useKV<ModelConfig>('model-config', {
+    provider: 'openai',
     apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-4',
+    modelName: 'gpt-4o',
     apiKey: '',
     temperature: 0.7,
     maxTokens: 2000
@@ -28,8 +29,9 @@ function App() {
 
   const safeConversations = conversations ?? []
   const safeConfig = config ?? {
+    provider: 'openai' as const,
     apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-4',
+    modelName: 'gpt-4o',
     apiKey: '',
     temperature: 0.7,
     maxTokens: 2000
@@ -93,7 +95,7 @@ function App() {
   }
 
   const handleSendMessage = async (content: string) => {
-    if (!safeConfig.apiKey) {
+    if (!safeConfig.apiKey && safeConfig.provider !== 'localhost') {
       toast.error('Please configure your API key in settings')
       setSettingsOpen(true)
       return
@@ -229,9 +231,19 @@ function App() {
 
       <div className="flex-1 flex flex-col">
         <div className="h-16 border-b border-border flex items-center justify-between px-6 bg-card/50 backdrop-blur-sm">
-          <h1 className="text-xl font-bold">
-            {currentConversation?.title || 'AI Chat'}
-          </h1>
+          <div className="flex flex-col">
+            <h1 className="text-xl font-bold">
+              {currentConversation?.title || 'AI Chat'}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {safeConfig.provider === 'openai' && 'OpenAI'}
+              {safeConfig.provider === 'z-ai' && 'z.ai'}
+              {safeConfig.provider === 'copilot' && 'GitHub Copilot'}
+              {safeConfig.provider === 'localhost' && 'Localhost'}
+              {safeConfig.provider === 'custom' && 'Custom'}
+              {' • '}{safeConfig.modelName || 'No model configured'}
+            </p>
+          </div>
           <Button
             variant="ghost"
             size="icon"
