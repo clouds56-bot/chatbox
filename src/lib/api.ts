@@ -61,9 +61,13 @@ export async function sendMessage(
           const parsed = JSON.parse(data)
           const content = parsed.choices?.[0]?.delta?.content
           const thinking = parsed.choices?.[0]?.delta?.thinking
+          const reasoningContent = parsed.choices?.[0]?.delta?.reasoning_content
           
           if (thinking) {
             onToken(thinking, 'thinking')
+          }
+          if (reasoningContent) {
+            onToken(reasoningContent, 'thinking')
           }
           if (content) {
             onToken(content, 'content')
