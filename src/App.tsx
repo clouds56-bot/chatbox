@@ -25,6 +25,7 @@ function App() {
   const [endpointsOpen, setEndpointsOpen] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const safeConversations = conversations ?? []
   const safeEndpoints = endpoints ?? []
@@ -72,9 +73,7 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentConversation?.messages])
 
   const createNewConversation = () => {
@@ -218,13 +217,16 @@ function App() {
                           ? { 
                               ...m, 
                               thinking: (m.thinking || '') + token,
-                              isThinkingStreaming: true 
+                              isThinkingStreaming: true,
+                              thinkingStartTime: m.thinkingStartTime || Date.now(),
+                              thinkingTokenCount: (m.thinkingTokenCount || 0) + 1
                             }
                           : { 
                               ...m, 
                               content: m.content + token,
                               isStreaming: true,
-                              isThinkingStreaming: false 
+                              isThinkingStreaming: false,
+                              thinkingEndTime: m.thinking && !m.thinkingEndTime ? Date.now() : m.thinkingEndTime
                             }
                         : m
                     )
@@ -242,7 +244,12 @@ function App() {
                 ...c,
                 messages: c.messages.map(m =>
                   m.id === assistantMessageId
-                    ? { ...m, isStreaming: false, isThinkingStreaming: false }
+                    ? { 
+                        ...m, 
+                        isStreaming: false, 
+                        isThinkingStreaming: false,
+                        thinkingEndTime: m.thinking && !m.thinkingEndTime ? Date.now() : m.thinkingEndTime
+                      }
                     : m
                 ),
                 updatedAt: Date.now()
@@ -299,7 +306,7 @@ function App() {
             onSettingsClick={() => setEndpointsOpen(true)}
           />
 
-          <ScrollArea className="flex-1" ref={scrollRef}>
+          <ScrollArea className="flex-1">
             <div className="max-w-4xl mx-auto p-6 space-y-4">
               {safeEndpoints.length === 0 && (
                 <EmptyState
@@ -323,6 +330,7 @@ function App() {
                   />
                 )
               })}
+              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 

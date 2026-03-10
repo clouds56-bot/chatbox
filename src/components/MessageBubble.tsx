@@ -30,6 +30,9 @@ export function MessageBubble({ message, endpoint }: MessageBubbleProps) {
             thinking={message.thinking} 
             isStreaming={message.isThinkingStreaming}
             hasContent={!!message.content}
+            thinkingStartTime={message.thinkingStartTime}
+            thinkingEndTime={message.thinkingEndTime}
+            thinkingTokenCount={message.thinkingTokenCount}
           />
         )}
         <MessageContent

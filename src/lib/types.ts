@@ -8,6 +8,9 @@ export interface Message {
   endpointId?: string
   thinking?: string
   isThinkingStreaming?: boolean
+  thinkingStartTime?: number
+  thinkingEndTime?: number
+  thinkingTokenCount?: number
 }
 
 export interface Conversation {

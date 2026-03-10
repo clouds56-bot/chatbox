@@ -9,9 +9,19 @@ interface ThinkingSectionProps {
   thinking: string
   isStreaming?: boolean
   hasContent?: boolean
+  thinkingStartTime?: number
+  thinkingEndTime?: number
+  thinkingTokenCount?: number
 }
 
-export function ThinkingSection({ thinking, isStreaming, hasContent }: ThinkingSectionProps) {
+export function ThinkingSection({ 
+  thinking, 
+  isStreaming, 
+  hasContent,
+  thinkingStartTime,
+  thinkingEndTime,
+  thinkingTokenCount
+}: ThinkingSectionProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   useEffect(() => {
@@ -23,6 +33,10 @@ export function ThinkingSection({ thinking, isStreaming, hasContent }: ThinkingS
   }, [hasContent, thinking, isStreaming])
 
   if (!thinking) return null
+
+  const thinkingDuration = thinkingStartTime && thinkingEndTime 
+    ? Math.round((thinkingEndTime - thinkingStartTime) / 1000)
+    : null
 
   const renderThinking = () => {
     try {
@@ -44,8 +58,10 @@ export function ThinkingSection({ thinking, isStreaming, hasContent }: ThinkingS
           )}
         >
           <Brain size={16} weight="duotone" className="text-primary" />
-          <span className="font-medium">Thinking</span>
-          {isStreaming && (
+          <span className="font-medium">
+            {isStreaming ? 'Thinking' : 'Thought'}
+          </span>
+          {isStreaming ? (
             <motion.span
               animate={{ opacity: [1, 0.3, 1] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -53,6 +69,13 @@ export function ThinkingSection({ thinking, isStreaming, hasContent }: ThinkingS
             >
               ...
             </motion.span>
+          ) : (
+            thinkingDuration !== null && (
+              <span className="text-xs text-muted-foreground">
+                {thinkingDuration}s
+                {thinkingTokenCount && ` (${thinkingTokenCount} tokens)`}
+              </span>
+            )
           )}
           <CaretDown
             size={16}
