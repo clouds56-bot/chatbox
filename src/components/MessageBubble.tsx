@@ -1,4 +1,4 @@
-import { Message } from '@/lib/types'
+import { Message, EndpointConfig } from '@/lib/types'
 import { Avatar } from '@/components/ui/avatar'
 import { Card } from '@/components/ui/card'
 import { Robot, User } from '@phosphor-icons/react'
@@ -9,6 +9,7 @@ import { marked } from 'marked'
 
 interface MessageBubbleProps {
   message: Message
+  endpoint?: EndpointConfig
 }
 
 marked.setOptions({
@@ -16,7 +17,7 @@ marked.setOptions({
   gfm: true,
 })
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, endpoint }: MessageBubbleProps) {
   const isUser = message.role === 'user'
   const isError = message.error
 
@@ -42,25 +43,32 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </div>
       </Avatar>
 
-      <Card
-        className={cn(
-          'p-4 max-w-[85%] break-words',
-          isUser ? 'bg-secondary text-secondary-foreground' : 'bg-card text-card-foreground',
-          isError && 'border-destructive bg-destructive/10'
+      <div className="flex flex-col gap-1 max-w-[85%]">
+        {!isUser && endpoint && (
+          <p className="text-xs text-muted-foreground px-1">
+            {endpoint.name} • {endpoint.modelName}
+          </p>
         )}
-      >
-        <div
-          className="markdown-content text-[15px] leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: formattedContent }}
-        />
-        {message.isStreaming && (
-          <motion.span
-            animate={{ opacity: [1, 0] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-            className="inline-block w-2 h-4 ml-1 bg-accent"
+        <Card
+          className={cn(
+            'p-4 break-words',
+            isUser ? 'bg-secondary text-secondary-foreground' : 'bg-card text-card-foreground',
+            isError && 'border-destructive bg-destructive/10'
+          )}
+        >
+          <div
+            className="markdown-content text-[15px] leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: formattedContent }}
           />
-        )}
-      </Card>
+          {message.isStreaming && (
+            <motion.span
+              animate={{ opacity: [1, 0] }}
+              transition={{ duration: 0.8, repeat: Infinity }}
+              className="inline-block w-2 h-4 ml-1 bg-accent"
+            />
+          )}
+        </Card>
+      </div>
     </motion.div>
   )
 }

@@ -5,6 +5,7 @@ export interface Message {
   timestamp: number
   isStreaming?: boolean
   error?: boolean
+  endpointId?: string
 }
 
 export interface Conversation {
@@ -34,6 +35,20 @@ export interface ModelConfig {
   oauthToken?: OAuthToken
   temperature?: number
   maxTokens?: number
+}
+
+export interface EndpointConfig {
+  id: string
+  name: string
+  provider: ProviderType
+  apiEndpoint: string
+  modelName: string
+  apiKey: string
+  authMethod: AuthMethod
+  oauthToken?: OAuthToken
+  temperature?: number
+  maxTokens?: number
+  isDefault?: boolean
 }
 
 export interface ProviderPreset {

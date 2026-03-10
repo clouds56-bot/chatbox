@@ -1,57 +1,36 @@
 import { useState, useRef, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Conversation, Message, ModelConfig, OAuthToken } from '@/lib/types'
+import { Conversation, Message, EndpointConfig, OAuthToken } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
 import { MessageInput } from '@/components/MessageInput'
-import { SettingsDialog } from '@/components/SettingsDialog'
+import { EndpointsDialog } from '@/components/EndpointsDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Gear } from '@phosphor-icons/react'
+import { ListBullets } from '@phosphor-icons/react'
 import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
-import { useOAuthRefresh } from '@/hooks/use-oauth-refresh'
 
 function App() {
   if (window.location.pathname === '/oauth/callback') {
     return <OAuthCallback />
   }
+  
   const [conversations, setConversations] = useKV<Conversation[]>('conversations', [])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [config, setConfig] = useKV<ModelConfig>('model-config', {
-    provider: 'openai',
-    apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-4o',
-    apiKey: '',
-    authMethod: 'api-key',
-    temperature: 0.7,
-    maxTokens: 2000
-  })
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [endpoints, setEndpoints] = useKV<EndpointConfig[]>('endpoints', [])
+  const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
+  const [endpointsOpen, setEndpointsOpen] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const safeConversations = conversations ?? []
-  const safeConfig = config ?? {
-    provider: 'openai' as const,
-    apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-    modelName: 'gpt-4o',
-    apiKey: '',
-    authMethod: 'api-key' as const,
-    temperature: 0.7,
-    maxTokens: 2000
-  }
+  const safeEndpoints = endpoints ?? []
 
   const currentConversation = safeConversations.find(c => c.id === currentConversationId)
-
-  useOAuthRefresh(safeConfig.oauthToken, (newToken: OAuthToken) => {
-    setConfig(current => ({
-      ...(current ?? safeConfig),
-      oauthToken: newToken
-    }))
-  })
+  const defaultEndpoint = safeEndpoints.find(e => e.isDefault) || safeEndpoints[0]
 
   useEffect(() => {
     if (safeConversations.length === 0) {
@@ -62,14 +41,26 @@ function App() {
   }, [])
 
   useEffect(() => {
+    if (!selectedEndpointId && defaultEndpoint) {
+      setSelectedEndpointId(defaultEndpoint.id)
+    }
+  }, [defaultEndpoint])
+
+  useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return
 
       if (event.data.type === 'oauth-success') {
-        setConfig(current => ({
-          ...(current ?? safeConfig),
-          oauthToken: event.data.token
-        }))
+        const token: OAuthToken = event.data.token
+        setEndpoints(current => {
+          const updated = (current ?? []).map(e => {
+            if (e.authMethod === 'oauth' && e.provider === 'copilot') {
+              return { ...e, oauthToken: token }
+            }
+            return e
+          })
+          return updated
+        })
         toast.success('Successfully connected to GitHub!')
       } else if (event.data.type === 'oauth-error') {
         toast.error(event.data.error || 'OAuth authentication failed')
@@ -127,20 +118,26 @@ function App() {
     )
   }
 
-  const handleSendMessage = async (content: string) => {
-    const isApiKeyMethod = safeConfig.authMethod === 'api-key'
-    const isOAuthMethod = safeConfig.authMethod === 'oauth'
-    const isNoneMethod = safeConfig.authMethod === 'none'
-
-    if (isApiKeyMethod && !safeConfig.apiKey) {
-      toast.error('Please configure your API key in settings')
-      setSettingsOpen(true)
+  const handleSendMessage = async (content: string, endpointId: string) => {
+    const endpoint = safeEndpoints.find(e => e.id === endpointId)
+    
+    if (!endpoint) {
+      toast.error('Selected endpoint not found')
       return
     }
 
-    if (isOAuthMethod && !safeConfig.oauthToken) {
-      toast.error('Please authenticate with OAuth in settings')
-      setSettingsOpen(true)
+    const isApiKeyMethod = endpoint.authMethod === 'api-key'
+    const isOAuthMethod = endpoint.authMethod === 'oauth'
+
+    if (isApiKeyMethod && !endpoint.apiKey) {
+      toast.error('Please configure API key for this endpoint')
+      setEndpointsOpen(true)
+      return
+    }
+
+    if (isOAuthMethod && !endpoint.oauthToken) {
+      toast.error('Please authenticate with OAuth for this endpoint')
+      setEndpointsOpen(true)
       return
     }
 
@@ -150,7 +147,8 @@ function App() {
       id: uuidv4(),
       role: 'user',
       content,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      endpointId
     }
 
     setConversations(current =>
@@ -175,7 +173,8 @@ function App() {
       role: 'assistant',
       content: '',
       timestamp: Date.now(),
-      isStreaming: true
+      isStreaming: true,
+      endpointId
     }
 
     setConversations(current =>
@@ -200,7 +199,7 @@ function App() {
       await sendMessage(
         content,
         conversationHistory,
-        safeConfig,
+        endpoint,
         (token: string) => {
           setConversations(current =>
             (current ?? []).map(c =>
@@ -262,6 +261,8 @@ function App() {
     }
   }
 
+  const selectedEndpoint = safeEndpoints.find(e => e.id === selectedEndpointId) || defaultEndpoint
+
   return (
     <>
       <Toaster position="top-right" />
@@ -281,54 +282,82 @@ function App() {
                 {currentConversation?.title || 'AI Chat'}
               </h1>
               <p className="text-xs text-muted-foreground">
-                {safeConfig.provider === 'openai' && 'OpenAI'}
-                {safeConfig.provider === 'z-ai' && 'z.ai'}
-                {safeConfig.provider === 'copilot' && 'GitHub Copilot'}
-                {safeConfig.provider === 'localhost' && 'Localhost'}
-                {safeConfig.provider === 'custom' && 'Custom'}
-                {' • '}{safeConfig.modelName || 'No model configured'}
+                {selectedEndpoint ? `${selectedEndpoint.name} • ${selectedEndpoint.modelName}` : 'No endpoint configured'}
               </p>
             </div>
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSettingsOpen(true)}
+              onClick={() => setEndpointsOpen(true)}
               className="hover:bg-accent/20"
             >
-              <Gear weight="bold" className="w-5 h-5" />
+              <ListBullets weight="bold" className="w-5 h-5" />
             </Button>
           </div>
 
           <ScrollArea className="flex-1" ref={scrollRef}>
             <div className="max-w-4xl mx-auto p-6 space-y-4">
-              {currentConversation?.messages.length === 0 && (
+              {safeEndpoints.length === 0 && (
+                <div className="flex items-center justify-center h-[60vh] text-center">
+                  <div className="space-y-3">
+                    <h2 className="text-3xl font-bold text-foreground">
+                      Configure an endpoint
+                    </h2>
+                    <p className="text-muted-foreground text-lg">
+                      Add at least one model endpoint to start chatting
+                    </p>
+                    <Button
+                      onClick={() => setEndpointsOpen(true)}
+                      className="mt-4 bg-primary hover:bg-primary/90"
+                    >
+                      <ListBullets weight="bold" className="w-4 h-4 mr-2" />
+                      Manage Endpoints
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
                 <div className="flex items-center justify-center h-[60vh] text-center">
                   <div className="space-y-3">
                     <h2 className="text-3xl font-bold text-foreground">
                       Start a conversation
                     </h2>
                     <p className="text-muted-foreground text-lg">
-                      Send a message to begin chatting with your configured AI model
+                      Send a message to begin chatting with {selectedEndpoint?.name || 'your selected model'}
                     </p>
                   </div>
                 </div>
               )}
-              {currentConversation?.messages.map(message => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
+              {currentConversation?.messages.map(message => {
+                const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
+                return (
+                  <MessageBubble 
+                    key={message.id} 
+                    message={message}
+                    endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
+                  />
+                )
+              })}
             </div>
           </ScrollArea>
 
-          <MessageInput onSend={handleSendMessage} disabled={isStreaming} />
+          {safeEndpoints.length > 0 && (
+            <MessageInput 
+              onSend={handleSendMessage} 
+              disabled={isStreaming}
+              endpoints={safeEndpoints}
+              selectedEndpointId={selectedEndpointId}
+              onEndpointChange={setSelectedEndpointId}
+            />
+          )}
         </div>
 
-        <SettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          config={safeConfig}
-          onSave={(newConfig) => {
-            setConfig(newConfig)
-            toast.success('Configuration saved')
+        <EndpointsDialog
+          open={endpointsOpen}
+          onOpenChange={setEndpointsOpen}
+          endpoints={safeEndpoints}
+          onSave={(newEndpoints) => {
+            setEndpoints(newEndpoints)
           }}
         />
       </div>

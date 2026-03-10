@@ -1,10 +1,10 @@
-import { ModelConfig } from './types'
+import { EndpointConfig } from './types'
 import { getAuthorizationHeader } from './oauth'
 
 export async function sendMessage(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
-  config: ModelConfig,
+  config: EndpointConfig,
   onToken: (token: string) => void
 ): Promise<void> {
   const messages = [
