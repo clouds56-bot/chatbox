@@ -214,8 +214,6 @@ function App() {
                     ...c,
                     messages: c.messages.map(m =>
                       m.id === assistantMessageId
-                        ? type === 'thinking'
-                          ? { 
                               ...m, 
                               thinking: (m.thinking || '') + token,
                               isThinkingStreaming: true 
@@ -225,6 +223,8 @@ function App() {
                               content: m.content + token,
                               isThinkingStreaming: false 
                             }
+                        : m
+                    )
                         : m
                     )
                   }
@@ -237,13 +237,11 @@ function App() {
       setConversations(current =>
         (current ?? []).map(c =>
           c.id === currentConversationId
-            ? {
-                ...c,
                 messages: c.messages.map(m =>
                   m.id === assistantMessageId
                     ? { ...m, isStreaming: false, isThinkingStreaming: false }
                     : m
-                ),
+                    ? { ...m, isStreaming: false, isThinkingStreaming: false }
                 updatedAt: Date.now()
               }
             : c
@@ -255,7 +253,7 @@ function App() {
 
       setConversations(current =>
         (current ?? []).map(c =>
-          c.id === currentConversationId
+      setConversations(current =>
             ? {
                 ...c,
                 messages: c.messages.map(m =>
