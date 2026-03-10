@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ModelConfig, ProviderType } from '@/lib/types'
 import { PROVIDER_PRESETS, getProviderPreset } from '@/lib/providers'
-import { initiateGitHubOAuth } from '@/lib/oauth'
+import { initiateGitHubOAuth, isTokenExpired } from '@/lib/oauth'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { GithubLogo, Check } from '@phosphor-icons/react'
+import { GithubLogo, Check, Clock } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
 interface SettingsDialogProps {
@@ -58,6 +58,11 @@ export function SettingsDialog({ open, onOpenChange, config, onSave }: SettingsD
     ? !!localConfig.oauthToken 
     : (showApiKeyField ? !!localConfig.apiKey : true)
 
+  const tokenExpired = localConfig.oauthToken ? isTokenExpired(localConfig.oauthToken) : false
+  const tokenExpiresAt = localConfig.oauthToken?.expiresAt
+  const timeUntilExpiry = tokenExpiresAt ? tokenExpiresAt - Date.now() : null
+  const hoursUntilExpiry = timeUntilExpiry ? Math.floor(timeUntilExpiry / (1000 * 60 * 60)) : null
+
   const handleSave = () => {
     onSave(localConfig)
     onOpenChange(false)
@@ -104,22 +109,48 @@ export function SettingsDialog({ open, onOpenChange, config, onSave }: SettingsD
             <div className="space-y-3">
               <Label>Authentication</Label>
               {isAuthenticated ? (
-                <div className="flex items-center gap-2 p-3 bg-accent/10 border border-accent rounded-md">
-                  <Check weight="bold" className="w-5 h-5 text-accent" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Connected</p>
-                    <p className="text-xs text-muted-foreground">
-                      You're authenticated with GitHub
-                    </p>
+                <>
+                  <div className={`flex items-center gap-2 p-3 border rounded-md ${
+                    tokenExpired 
+                      ? 'bg-destructive/10 border-destructive' 
+                      : 'bg-accent/10 border-accent'
+                  }`}>
+                    <Check weight="bold" className={`w-5 h-5 ${
+                      tokenExpired ? 'text-destructive' : 'text-accent'
+                    }`} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {tokenExpired ? 'Token Expired' : 'Connected'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        You're authenticated with GitHub
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLocalConfig({ ...localConfig, oauthToken: undefined })}
+                    >
+                      Disconnect
+                    </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setLocalConfig({ ...localConfig, oauthToken: undefined })}
-                  >
-                    Disconnect
-                  </Button>
-                </div>
+                  {!tokenExpired && tokenExpiresAt && hoursUntilExpiry !== null && (
+                    <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-xs text-muted-foreground">
+                        Token expires in {hoursUntilExpiry > 0 ? `${hoursUntilExpiry}h` : '<1h'} 
+                        {localConfig.oauthToken?.refreshToken && ' • Auto-refresh enabled'}
+                      </p>
+                    </div>
+                  )}
+                  {tokenExpired && (
+                    <div className="flex items-center gap-2 p-2 bg-destructive/10 rounded-md">
+                      <p className="text-xs text-destructive">
+                        Token expired. Please reconnect or wait for auto-refresh to complete.
+                      </p>
+                    </div>
+                  )}
+                </>
               ) : (
                 <Button
                   onClick={handleGitHubOAuth}

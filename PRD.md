@@ -66,7 +66,8 @@ This is a chat interface with message management, model configuration, and persi
 - **Localhost Connections** - Automatically skip API key requirement for localhost provider, handle CORS and connection errors gracefully
 - **Provider Switching** - Preserve API keys and OAuth tokens when switching between providers, warn if switching mid-conversation
 - **OAuth Flow Interruption** - Handle cases where OAuth window is closed or authorization denied, provide clear error messages and retry options
-- **Token Expiration** - Detect expired OAuth tokens and prompt re-authentication, automatically attempt token refresh when available
+- **Token Expiration** - Automatically refresh OAuth tokens before expiration when refresh token is available, detect expired tokens and prompt re-authentication if auto-refresh fails, display token expiration status in settings
+- **Token Auto-Refresh** - Background process monitors token expiration and automatically refreshes 5 minutes before expiry, preserves user session without interruption
 
 ## Design Direction
 

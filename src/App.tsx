@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Conversation, Message, ModelConfig } from '@/lib/types'
+import { Conversation, Message, ModelConfig, OAuthToken } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Gear } from '@phosphor-icons/react'
 import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
+import { useOAuthRefresh } from '@/hooks/use-oauth-refresh'
 
 function App() {
   if (window.location.pathname === '/oauth/callback') {
@@ -44,6 +45,13 @@ function App() {
   }
 
   const currentConversation = safeConversations.find(c => c.id === currentConversationId)
+
+  useOAuthRefresh(safeConfig.oauthToken, (newToken: OAuthToken) => {
+    setConfig(current => ({
+      ...(current ?? safeConfig),
+      oauthToken: newToken
+    }))
+  })
 
   useEffect(() => {
     if (safeConversations.length === 0) {
