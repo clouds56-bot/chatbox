@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { MessageAvatar } from '@/components/widgets/MessageAvatar'
 import { MessageMetadata } from '@/components/widgets/MessageMetadata'
 import { MessageContent } from '@/components/widgets/MessageContent'
+import { ThinkingSection } from '@/components/widgets/ThinkingSection'
 
 interface MessageBubbleProps {
   message: Message
@@ -22,8 +23,14 @@ export function MessageBubble({ message, endpoint }: MessageBubbleProps) {
     >
       <MessageAvatar isUser={isUser} />
 
-      <div className="flex flex-col gap-1 max-w-[85%]">
+      <div className="flex flex-col gap-2 max-w-[85%]">
         {!isUser && <MessageMetadata endpoint={endpoint} />}
+        {!isUser && message.thinking && (
+          <ThinkingSection 
+            thinking={message.thinking} 
+            isStreaming={message.isThinkingStreaming}
+          />
+        )}
         <MessageContent
           content={message.content}
           isUser={isUser}

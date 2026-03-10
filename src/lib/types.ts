@@ -6,6 +6,8 @@ export interface Message {
   isStreaming?: boolean
   error?: boolean
   endpointId?: string
+  thinking?: string
+  isThinkingStreaming?: boolean
 }
 
 export interface Conversation {

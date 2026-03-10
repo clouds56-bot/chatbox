@@ -5,7 +5,7 @@ export async function sendMessage(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
   config: EndpointConfig,
-  onToken: (token: string) => void
+  onToken: (token: string, type?: 'content' | 'thinking') => void
 ): Promise<void> {
   const messages = [
     ...conversationHistory,
@@ -60,8 +60,13 @@ export async function sendMessage(
         try {
           const parsed = JSON.parse(data)
           const content = parsed.choices?.[0]?.delta?.content
+          const thinking = parsed.choices?.[0]?.delta?.thinking
+          
+          if (thinking) {
+            onToken(thinking, 'thinking')
+          }
           if (content) {
-            onToken(content)
+            onToken(content, 'content')
           }
         } catch (e) {
           console.error('Failed to parse SSE data:', e)

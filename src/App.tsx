@@ -176,6 +176,8 @@ function App() {
       content: '',
       timestamp: Date.now(),
       isStreaming: true,
+      thinking: '',
+      isThinkingStreaming: false,
       endpointId
     }
 
@@ -204,7 +206,7 @@ function App() {
         content,
         conversationHistory,
         endpointWithModel,
-        (token: string) => {
+        (token: string, type?: 'content' | 'thinking') => {
           setConversations(current =>
             (current ?? []).map(c =>
               c.id === currentConversationId
@@ -212,7 +214,17 @@ function App() {
                     ...c,
                     messages: c.messages.map(m =>
                       m.id === assistantMessageId
-                        ? { ...m, content: m.content + token }
+                        ? type === 'thinking'
+                          ? { 
+                              ...m, 
+                              thinking: (m.thinking || '') + token,
+                              isThinkingStreaming: true 
+                            }
+                          : { 
+                              ...m, 
+                              content: m.content + token,
+                              isThinkingStreaming: false 
+                            }
                         : m
                     )
                   }
@@ -229,7 +241,7 @@ function App() {
                 ...c,
                 messages: c.messages.map(m =>
                   m.id === assistantMessageId
-                    ? { ...m, isStreaming: false }
+                    ? { ...m, isStreaming: false, isThinkingStreaming: false }
                     : m
                 ),
                 updatedAt: Date.now()
