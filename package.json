@@ -13,7 +13,13 @@
         "preview": "vite preview",
         "server:dev": "tsx watch server/index.ts",
         "server:build": "tsc -p server/tsconfig.json",
-        "server:start": "node server/dist/index.js"
+        "server:start": "node server/dist/index.js",
+        "tauri": "tauri",
+        "tauri:dev": "tauri dev",
+        "tauri:build": "tauri build",
+        "tauri:android:init": "tauri android init",
+        "tauri:android:dev": "tauri android dev",
+        "tauri:android:build": "tauri android build"
     },
     "dependencies": {
         "@github/spark": ">=0.43.1 <1",
@@ -83,6 +89,7 @@
     "devDependencies": {
         "@eslint/js": "^9.21.0",
         "@tailwindcss/postcss": "^4.1.8",
+        "@tauri-apps/cli": "^2.10.1",
         "@types/react": "^19.0.10",
         "@types/react-dom": "^19.0.4",
         "@vitejs/plugin-react-swc": "^4.2.2",
