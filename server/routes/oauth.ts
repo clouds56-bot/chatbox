@@ -17,6 +17,14 @@ interface GitHubErrorResponse {
   error_uri?: string
 }
 
+interface GitHubDeviceCodeResponse {
+  device_code: string
+  user_code: string
+  verification_uri: string
+  expires_in: number
+  interval: number
+}
+
 router.post('/github/token', async (req: Request, res: Response) => {
   const { code } = req.body
 
@@ -181,6 +189,113 @@ router.post('/github/revoke', async (req: Request, res: Response) => {
     res.status(500).json({ 
       error: 'server_error',
       message: 'Failed to revoke token with GitHub'
+    })
+  }
+})
+
+router.post('/github/device/code', async (req: Request, res: Response) => {
+  const clientId = process.env.GITHUB_CLIENT_ID
+
+  if (!clientId) {
+    console.error('GitHub OAuth credentials not configured')
+    return res.status(500).json({ 
+      error: 'OAuth not configured',
+      message: 'GitHub OAuth credentials are not set up on the server'
+    })
+  }
+
+  try {
+    const response = await fetch('https://github.com/login/device/code', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        scope: 'read:user'
+      })
+    })
+
+    const data = await response.json() as GitHubDeviceCodeResponse | GitHubErrorResponse
+
+    if ('error' in data) {
+      console.error('GitHub device code error:', data)
+      return res.status(400).json({
+        error: data.error,
+        message: data.error_description || 'Failed to request device code'
+      })
+    }
+
+    res.json({
+      device_code: data.device_code,
+      user_code: data.user_code,
+      verification_uri: data.verification_uri,
+      expires_in: data.expires_in,
+      interval: data.interval
+    })
+  } catch (error) {
+    console.error('Error requesting GitHub device code:', error)
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Failed to request device code from GitHub'
+    })
+  }
+})
+
+router.post('/github/device/token', async (req: Request, res: Response) => {
+  const { device_code } = req.body
+
+  if (!device_code) {
+    return res.status(400).json({ error: 'Device code is required' })
+  }
+
+  const clientId = process.env.GITHUB_CLIENT_ID
+
+  if (!clientId) {
+    console.error('GitHub OAuth credentials not configured')
+    return res.status(500).json({ 
+      error: 'OAuth not configured',
+      message: 'GitHub OAuth credentials are not set up on the server'
+    })
+  }
+
+  try {
+    const response = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        device_code: device_code,
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code'
+      })
+    })
+
+    const data = await response.json() as GitHubTokenResponse | GitHubErrorResponse
+
+    if ('error' in data) {
+      return res.status(400).json({
+        error: data.error,
+        message: data.error_description || 'Authorization pending'
+      })
+    }
+
+    res.json({
+      access_token: data.access_token,
+      token_type: data.token_type,
+      scope: data.scope,
+      refresh_token: data.refresh_token,
+      expires_in: data.expires_in,
+      refresh_token_expires_in: data.refresh_token_expires_in
+    })
+  } catch (error) {
+    console.error('Error polling GitHub device token:', error)
+    res.status(500).json({ 
+      error: 'server_error',
+      message: 'Failed to poll for device token from GitHub'
     })
   }
 })

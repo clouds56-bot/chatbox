@@ -1,5 +1,13 @@
 import { OAuthToken } from './types'
 
+export interface DeviceCodeInfo {
+  deviceCode: string
+  userCode: string
+  verificationUri: string
+  expiresIn: number
+  interval: number
+}
+
 export async function initiateGitHubOAuth(): Promise<void> {
   const user = await window.spark.user()
   
@@ -101,4 +109,85 @@ function generateRandomState(): string {
 
 export function getAuthorizationHeader(token: OAuthToken): string {
   return `${token.tokenType} ${token.accessToken}`
+}
+
+export async function requestDeviceCode(): Promise<DeviceCodeInfo> {
+  const response = await fetch('/api/oauth/github/device/code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
+
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.message || 'Failed to request device code')
+  }
+
+  const data = await response.json()
+  
+  return {
+    deviceCode: data.device_code,
+    userCode: data.user_code,
+    verificationUri: data.verification_uri,
+    expiresIn: data.expires_in,
+    interval: data.interval
+  }
+}
+
+export async function pollDeviceToken(deviceCode: string): Promise<OAuthToken> {
+  const response = await fetch('/api/oauth/github/device/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ device_code: deviceCode })
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    if (data.error === 'authorization_pending') {
+      throw new Error('authorization_pending')
+    }
+    if (data.error === 'slow_down') {
+      throw new Error('slow_down')
+    }
+    throw new Error(data.message || 'Failed to poll for token')
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresAt: data.expires_in ? Date.now() + (data.expires_in * 1000) : undefined,
+    tokenType: data.token_type || 'Bearer'
+  }
+}
+
+export async function waitForDeviceToken(
+  deviceCodeInfo: DeviceCodeInfo,
+  onPending?: () => void
+): Promise<OAuthToken> {
+  const startTime = Date.now()
+  const expiresAt = startTime + (deviceCodeInfo.expiresIn * 1000)
+  let interval = deviceCodeInfo.interval * 1000
+
+  while (Date.now() < expiresAt) {
+    await new Promise(resolve => setTimeout(resolve, interval))
+
+    try {
+      const token = await pollDeviceToken(deviceCodeInfo.deviceCode)
+      return token
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message === 'authorization_pending') {
+          onPending?.()
+          continue
+        }
+        if (error.message === 'slow_down') {
+          interval += 5000
+          continue
+        }
+      }
+      throw error
+    }
+  }
+
+  throw new Error('Device authorization expired')
 }
