@@ -24,7 +24,7 @@ You need to update the GitHub OAuth app client secret in the server configuratio
 
 ```bash
 # From project root
-npm run server:dev
+pnpm server:dev
 ```
 
 Expected output:
@@ -36,7 +36,7 @@ OAuth server running on port 3001
 
 ```bash
 # From project root
-npm run dev
+pnpm dev
 ```
 
 Expected output:

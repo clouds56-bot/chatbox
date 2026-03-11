@@ -6,8 +6,8 @@ This guide walks through testing the OAuth authentication flow for GitHub Copilo
 
 Before testing, ensure:
 
-1. ✅ Backend OAuth server is running (`npm run server:dev`)
-2. ✅ Frontend development server is running (`npm run dev`)
+1. ✅ Backend OAuth server is running (`pnpm server:dev`)
+2. ✅ Frontend development server is running (`pnpm dev`)
 3. ✅ GitHub OAuth App is configured with correct callback URL
 4. ✅ Environment variables are set in `server/.env`
 
@@ -196,7 +196,7 @@ Before testing, ensure:
 
 1. **Stop Backend Server**
    - Stop the server running on port 3001
-   - Kill the `npm run server:dev` process
+   - Kill the `pnpm server:dev` process
 
 2. **Attempt OAuth**
    - Open Settings
@@ -211,7 +211,7 @@ Before testing, ensure:
    - Popup closes
 
 4. **Restart Server and Retry**
-   - Restart backend server: `npm run server:dev`
+   - Restart backend server: `pnpm server:dev`
    - Try OAuth flow again
    - Should work normally
 

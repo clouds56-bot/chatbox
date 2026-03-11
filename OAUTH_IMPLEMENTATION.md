@@ -130,7 +130,7 @@ PORT=3001
 From the project root:
 
 ```bash
-npm run server:dev
+pnpm server:dev
 ```
 
 The OAuth server will run on `http://localhost:3001`.
@@ -140,7 +140,7 @@ The OAuth server will run on `http://localhost:3001`.
 In a separate terminal:
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 The frontend will run on `http://localhost:5173`.
@@ -293,12 +293,12 @@ Revoke a GitHub access token.
 
 2. **Build the server**:
    ```bash
-   npm run server:build
+   pnpm server:build
    ```
 
 3. **Start the server**:
    ```bash
-   npm run server:start
+   pnpm server:start
    ```
 
 4. **Configure Reverse Proxy** (if needed) to route `/api/oauth/*` to your backend server

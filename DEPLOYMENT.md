@@ -14,7 +14,7 @@ This guide provides step-by-step instructions for deploying the OAuth backend se
 
 #### 1. Install Heroku CLI
 ```bash
-npm install -g heroku
+pnpm add -g heroku
 heroku login
 ```
 
@@ -34,7 +34,7 @@ heroku config:set PORT=3001
 #### 4. Create Procfile
 Create `Procfile` in the server directory:
 ```
-web: npm run server:start
+web: pnpm server:start
 ```
 
 #### 5. Deploy
@@ -51,7 +51,7 @@ Set callback URL to: `https://your-frontend-domain.com/oauth/callback`
 
 #### 1. Install Railway CLI
 ```bash
-npm install -g @railway/cli
+pnpm add -g @railway/cli
 railway login
 ```
 
@@ -85,8 +85,8 @@ railway up
 #### 2. Configure Service
 - **Name**: oauth-server
 - **Environment**: Node
-- **Build Command**: `npm run server:build`
-- **Start Command**: `npm run server:start`
+- **Build Command**: `pnpm server:build`
+- **Start Command**: `pnpm server:start`
 - **Root Directory**: `server` (if deploying only server)
 
 #### 3. Add Environment Variables
@@ -107,7 +107,7 @@ Render will automatically deploy when you push to your repository.
 
 #### 1. Install Vercel CLI
 ```bash
-npm install -g vercel
+pnpm add -g vercel
 vercel login
 ```
 
@@ -187,7 +187,7 @@ vercel env add GITHUB_CLIENT_SECRET
 
 #### 1. Install Serverless Framework
 ```bash
-npm install -g serverless
+pnpm add -g serverless
 ```
 
 #### 2. Create `serverless.yml`
@@ -255,8 +255,8 @@ serverless deploy
 - **Type**: Web Service
 - **Branch**: main
 - **Source Directory**: server
-- **Build Command**: `npm run server:build`
-- **Run Command**: `npm run server:start`
+- **Build Command**: `pnpm server:build`
+- **Run Command**: `pnpm server:start`
 
 #### 3. Add Environment Variables
 ```
@@ -280,15 +280,15 @@ FROM node:18-alpine
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN pnpm install --frozen-lockfile --prod
 
 COPY server ./server
 
-RUN npm run server:build
+RUN pnpm server:build
 
 EXPOSE 3001
 
-CMD ["npm", "run", "server:start"]
+CMD ["pnpm", "server:start"]
 ```
 
 ### Create `docker-compose.yml`
@@ -384,7 +384,7 @@ location /api/oauth/ {
 ### Add Logging to Server
 Install winston:
 ```bash
-npm install winston
+pnpm add winston
 ```
 
 Update `server/index.ts`:

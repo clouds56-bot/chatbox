@@ -45,7 +45,7 @@ PORT=3001
 The server uses dependencies from the main project. Make sure you've installed the project dependencies:
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 4. Start the Server
@@ -53,13 +53,13 @@ npm install
 From the project root:
 
 ```bash
-npm run server:dev
+pnpm server:dev
 ```
 
 Or from the server directory:
 
 ```bash
-npm start
+pnpm --dir .. server:start
 ```
 
 The server will start on `http://localhost:3001`.
@@ -181,7 +181,7 @@ The server uses TypeScript and Express. Key files:
 1. Set environment variables on your hosting platform
 2. Update `FRONTEND_URL` to your production domain
 3. Update GitHub OAuth app callback URL to production URL
-4. Build and run: `npm run build && npm start`
+4. Build and run: `pnpm server:build && pnpm server:start`
 5. Ensure HTTPS is configured
 
 ## Troubleshooting

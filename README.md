@@ -32,7 +32,7 @@ A ChatGPT-like conversational AI interface that connects to multiple backend LLM
 ### 1. Install Dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Configure OAuth (Optional - for GitHub Copilot)
@@ -63,12 +63,12 @@ PORT=3001
 
 **Terminal 1 - Frontend:**
 ```bash
-npm run dev
+pnpm dev
 ```
 
 **Terminal 2 - OAuth Backend (if using OAuth):**
 ```bash
-npm run server:dev
+pnpm server:dev
 ```
 
 ### 4. Open Application
@@ -103,14 +103,14 @@ The app comes with preset configurations for:
 ## Scripts
 
 ### Frontend
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+- `pnpm dev` - Start development server
+- `pnpm build` - Build for production
+- `pnpm preview` - Preview production build
 
 ### Backend
-- `npm run server:dev` - Start OAuth server in development mode
-- `npm run server:build` - Build OAuth server for production
-- `npm run server:start` - Start production OAuth server
+- `pnpm server:dev` - Start OAuth server in development mode
+- `pnpm server:build` - Build OAuth server for production
+- `pnpm server:start` - Start production OAuth server
 
 ## Project Structure
 
@@ -179,7 +179,7 @@ The app comes with preset configurations for:
 - Check browser console for errors
 
 ### Build Issues
-- Clear node_modules and reinstall: `rm -rf node_modules && npm install`
+- Clear node_modules and reinstall: `rm -rf node_modules && pnpm install`
 - Clear build cache: `rm -rf dist`
 - Check Node.js version (18+ required)
 
