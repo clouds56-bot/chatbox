@@ -1,12 +1,17 @@
 import java.io.File
+import javax.inject.Inject
 import org.apache.tools.ant.taskdefs.condition.Os
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
+import org.gradle.process.ExecOperations
+import org.gradle.process.ExecSpec
 
-open class BuildTask : DefaultTask() {
+abstract class BuildTask @Inject constructor(
+    private val execOperations: ExecOperations
+) : DefaultTask() {
     @Input
     var rootDirRel: String? = null
     @Input
@@ -16,12 +21,11 @@ open class BuildTask : DefaultTask() {
 
     @TaskAction
     fun assemble() {
-        val executable = """pnpm""";
+        val executable = "pnpm"
         try {
             runTauriCli(executable)
         } catch (e: Exception) {
             if (Os.isFamily(Os.FAMILY_WINDOWS)) {
-                // Try different Windows-specific extensions
                 val fallbacks = listOf(
                     "$executable.exe",
                     "$executable.cmd",
@@ -39,7 +43,7 @@ open class BuildTask : DefaultTask() {
                 }
                 throw lastException
             } else {
-                throw e;
+                throw e
             }
         }
     }
@@ -48,21 +52,26 @@ open class BuildTask : DefaultTask() {
         val rootDirRel = rootDirRel ?: throw GradleException("rootDirRel cannot be null")
         val target = target ?: throw GradleException("target cannot be null")
         val release = release ?: throw GradleException("release cannot be null")
-        val args = listOf("tauri", "android", "android-studio-script");
+        val args = mutableListOf("tauri", "android", "android-studio-script")
+        
+        if (project.logger.isEnabled(LogLevel.DEBUG)) {
+            args.add("-vv")
+        } else if (project.logger.isEnabled(LogLevel.INFO)) {
+            args.add("-v")
+        }
+        if (release) {
+            args.add("--release")
+        }
+        args.add("--target")
+        args.add(target)
 
-        project.exec {
-            workingDir(File(project.projectDir, rootDirRel))
-            executable(executable)
-            args(args)
-            if (project.logger.isEnabled(LogLevel.DEBUG)) {
-                args("-vv")
-            } else if (project.logger.isEnabled(LogLevel.INFO)) {
-                args("-v")
+        val workDir = File(project.projectDir, rootDirRel)
+        execOperations.exec(object : org.gradle.api.Action<ExecSpec> {
+            override fun execute(spec: ExecSpec) {
+                spec.workingDir = workDir
+                spec.executable = executable
+                spec.args = args
             }
-            if (release) {
-                args("--release")
-            }
-            args(listOf("--target", target))
-        }.assertNormalExitValue()
+        }).assertNormalExitValue()
     }
 }
