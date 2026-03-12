@@ -35,6 +35,10 @@ jobs:
       - name: Build macOS app
         run: pnpm tauri build --target aarch64-apple-darwin
 
+      - name: Sign app (ad-hoc)
+        run: |
+          codesign --force --deep --sign - src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Chatbox.app
+
       - name: Upload macOS app
         uses: actions/upload-artifact@v4
         with:
