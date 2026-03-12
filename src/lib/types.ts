@@ -28,6 +28,7 @@ export interface ModeTool {
   id: string
   name: string
   description: string
+  inputSchema: Record<string, unknown>
 }
 
 export interface ModeConfig {
@@ -35,6 +36,33 @@ export interface ModeConfig {
   label: string
   systemPrompt: string
   tools: ModeTool[]
+}
+
+export interface ToolLoopToolCall {
+  id: string
+  name: string
+  arguments: Record<string, unknown>
+}
+
+export interface ToolLoopToolResult {
+  toolCallId: string
+  name: string
+  ok: boolean
+  output: Record<string, unknown>
+}
+
+export interface ToolLoopStep {
+  iteration: number
+  toolCalls: ToolLoopToolCall[]
+  toolResults: ToolLoopToolResult[]
+}
+
+export interface ToolLoopResponse {
+  content: string
+  reasoning: string
+  steps: ToolLoopStep[]
+  finishReason?: string
+  totalToolCalls: number
 }
 
 export type ProviderType = 'openai' | 'z-ai' | 'copilot' | 'localhost' | 'custom'
