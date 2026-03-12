@@ -1,7 +1,12 @@
-import { EndpointConfig } from './types'
+import { EndpointConfig, ToolLoopResponse } from './types'
 import { getAuthorizationHeader } from './oauth'
 import { getModeConfig } from './modes'
 import { ModeType } from './types'
+
+async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke<T>(command, args)
+}
 
 export async function sendMessage(
   message: string,
@@ -26,6 +31,36 @@ export async function sendMessage(
     headers['Authorization'] = `Bearer ${config.apiKey}`
   } else if (config.authMethod === 'oauth' && config.oauthToken) {
     headers['Authorization'] = getAuthorizationHeader(config.oauthToken)
+  }
+
+  const shouldUseToolLoop = modeConfig.tools.some(tool => tool.name.startsWith('fs:'))
+
+  if (shouldUseToolLoop) {
+    const response = await tauriInvoke<ToolLoopResponse>('execute_tool_loop', {
+      request: {
+        apiEndpoint: config.apiEndpoint,
+        model: config.modelName,
+        headers,
+        body: {
+          model: config.modelName,
+          messages,
+          temperature: config.temperature ?? 0.7,
+          max_tokens: config.maxTokens ?? 2000,
+          stream: false
+        },
+        tools: modeConfig.tools,
+        maxIterations: 6,
+        maxToolCalls: 12
+      }
+    })
+
+    if (response.reasoning) {
+      onToken(response.reasoning, 'thinking')
+    }
+    if (response.content) {
+      onToken(response.content, 'content')
+    }
+    return
   }
 
   const response = await fetch(config.apiEndpoint, {
