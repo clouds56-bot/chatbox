@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
 import { Conversation, Message, EndpointConfig, OAuthToken } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
+import { loadAppConfig, loadAppSession, saveAppConfig, saveAppSession } from '@/lib/persistence'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
 import { MessageInput } from '@/components/MessageInput'
@@ -20,13 +20,14 @@ function App() {
     return <OAuthCallback />
   }
   
-  const [conversations, setConversations] = useKV<Conversation[]>('conversations', [])
+  const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [endpoints, setEndpoints] = useKV<EndpointConfig[]>('endpoints', [])
+  const [endpoints, setEndpoints] = useState<EndpointConfig[]>([])
   const [selectedEndpointId, setSelectedEndpointId] = useState<string | null>(null)
   const [endpointsOpen, setEndpointsOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
@@ -38,18 +39,98 @@ function App() {
   const defaultEndpoint = safeEndpoints.find(e => e.isDefault) || safeEndpoints[0]
 
   useEffect(() => {
-    if (safeConversations.length === 0) {
-      createNewConversation()
-    } else if (!currentConversationId) {
-      setCurrentConversationId(safeConversations[0].id)
+    let active = true
+
+    const initializeState = async () => {
+      const [storedConfig, storedSession] = await Promise.all([
+        loadAppConfig(),
+        loadAppSession()
+      ])
+
+      if (!active) {
+        return
+      }
+
+      setEndpoints(storedConfig.endpoints)
+      setSelectedEndpointId(storedConfig.selectedEndpointId)
+
+      if (storedSession.conversations.length === 0) {
+        const newConversation: Conversation = {
+          id: uuidv4(),
+          title: 'New Chat',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+        setConversations([newConversation])
+        setCurrentConversationId(newConversation.id)
+      } else {
+        setConversations(storedSession.conversations)
+        const sessionConversationExists = storedSession.currentConversationId
+          ? storedSession.conversations.some(c => c.id === storedSession.currentConversationId)
+          : false
+        setCurrentConversationId(
+          sessionConversationExists
+            ? storedSession.currentConversationId
+            : storedSession.conversations[0].id
+        )
+      }
+
+      setIsHydrated(true)
+    }
+
+    initializeState().catch((error) => {
+      console.error('Failed to initialize app state:', error)
+      if (active) {
+        const newConversation: Conversation = {
+          id: uuidv4(),
+          title: 'New Chat',
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now()
+        }
+        setConversations([newConversation])
+        setCurrentConversationId(newConversation.id)
+        setIsHydrated(true)
+      }
+    })
+
+    return () => {
+      active = false
     }
   }, [])
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return
+    }
+
+    saveAppConfig({
+      endpoints: safeEndpoints,
+      selectedEndpointId
+    }).catch((error) => {
+      console.error('Failed to save config:', error)
+    })
+  }, [safeEndpoints, selectedEndpointId, isHydrated])
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return
+    }
+
+    saveAppSession({
+      conversations: safeConversations,
+      currentConversationId
+    }).catch((error) => {
+      console.error('Failed to save session:', error)
+    })
+  }, [safeConversations, currentConversationId, isHydrated])
 
   useEffect(() => {
     if (!selectedEndpointId && defaultEndpoint) {
       setSelectedEndpointId(defaultEndpoint.id)
     }
-  }, [defaultEndpoint])
+  }, [defaultEndpoint, selectedEndpointId])
 
   useEffect(() => {
     const handleOAuthMessage = (event: MessageEvent) => {
@@ -79,6 +160,71 @@ function App() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [currentConversation?.messages])
+
+  useEffect(() => {
+    if (!isStreaming) {
+      return
+    }
+
+    const scrollRoot = scrollRef.current
+    if (!scrollRoot) {
+      return
+    }
+
+    const viewport = scrollRoot.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+    if (!viewport) {
+      return
+    }
+
+    const lockToBottom = () => {
+      viewport.scrollTop = viewport.scrollHeight
+    }
+
+    const handleWheel = (event: WheelEvent) => {
+      if (event.deltaY < 0) {
+        event.preventDefault()
+        lockToBottom()
+      }
+    }
+
+    const handleTouchMove = (event: TouchEvent) => {
+      event.preventDefault()
+      lockToBottom()
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) {
+        event.preventDefault()
+        lockToBottom()
+      }
+    }
+
+    const handleScroll = () => {
+      const maxScrollTop = viewport.scrollHeight - viewport.clientHeight
+      if (viewport.scrollTop < maxScrollTop) {
+        viewport.scrollTop = maxScrollTop
+      }
+    }
+
+    lockToBottom()
+    viewport.addEventListener('wheel', handleWheel, { passive: false })
+    viewport.addEventListener('touchmove', handleTouchMove, { passive: false })
+    viewport.addEventListener('scroll', handleScroll)
+    window.addEventListener('keydown', handleKeyDown)
+
+    let frameId = window.requestAnimationFrame(function pinToBottom() {
+      lockToBottom()
+      frameId = window.requestAnimationFrame(pinToBottom)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+      viewport.removeEventListener('wheel', handleWheel)
+      viewport.removeEventListener('touchmove', handleTouchMove)
+      viewport.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isStreaming])
 
   const createNewConversation = () => {
     const newConv: Conversation = {
@@ -341,7 +487,7 @@ function App() {
             onMenuClick={isMobile ? () => setSidebarOpen(true) : undefined}
           />
 
-          <ScrollArea className="flex-1">
+          <ScrollArea ref={scrollRef} className="flex-1">
             <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
               {safeEndpoints.length === 0 && (
                 <EmptyState
