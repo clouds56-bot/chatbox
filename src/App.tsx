@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { Conversation, Message, EndpointConfig, OAuthToken } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
 import { loadAppConfig, loadAppSession, saveAppConfig, saveAppSession } from '@/lib/persistence'
@@ -16,10 +16,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { useIsMobile } from '@/hooks/use-mobile'
 
 function App() {
-  if (window.location.pathname === '/oauth/callback') {
-    return <OAuthCallback />
-  }
-  
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [endpoints, setEndpoints] = useState<EndpointConfig[]>([])
@@ -32,8 +28,8 @@ function App() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
 
-  const safeConversations = conversations ?? []
-  const safeEndpoints = endpoints ?? []
+  const safeConversations = useMemo(() => conversations ?? [], [conversations])
+  const safeEndpoints = useMemo(() => endpoints ?? [], [endpoints])
 
   const currentConversation = safeConversations.find(c => c.id === currentConversationId)
   const defaultEndpoint = safeEndpoints.find(e => e.isDefault) || safeEndpoints[0]
@@ -449,6 +445,10 @@ function App() {
     if (isMobile) {
       setSidebarOpen(false)
     }
+  }
+
+  if (window.location.pathname === '/oauth/callback') {
+    return <OAuthCallback />
   }
 
   return (
