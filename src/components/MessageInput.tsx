@@ -5,16 +5,30 @@ import { PaperPlaneRight } from '@phosphor-icons/react'
 import { EndpointConfig } from '@/lib/types'
 import { EndpointSelector } from '@/components/widgets/EndpointSelector'
 import { ModelSelector } from '@/components/widgets/ModelSelector'
+import { ModeSelector } from '@/components/widgets/ModeSelector'
+import { ModeType } from '@/lib/types'
 
 interface MessageInputProps {
-  onSend: (message: string, endpointId: string, modelName?: string) => void
+  onSend: (message: string, endpointId: string, modelName?: string, mode?: ModeType) => void
   disabled?: boolean
   endpoints: EndpointConfig[]
   selectedEndpointId: string | null
   onEndpointChange: (endpointId: string) => void
+  selectedMode: ModeType
+  onModeChange: (mode: ModeType) => void
+  modeLocked?: boolean
 }
 
-export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, onEndpointChange }: MessageInputProps) {
+export function MessageInput({
+  onSend,
+  disabled,
+  endpoints,
+  selectedEndpointId,
+  onEndpointChange,
+  selectedMode,
+  onModeChange,
+  modeLocked
+}: MessageInputProps) {
   const [input, setInput] = useState('')
   const [popoverOpen, setPopoverOpen] = useState(false)
   const [selectedModel, setSelectedModel] = useState<string | null>(null)
@@ -27,7 +41,7 @@ export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, 
   const handleSubmit = () => {
     const trimmed = input.trim()
     if (trimmed && !disabled && selectedEndpoint) {
-      onSend(trimmed, selectedEndpoint.id, currentModel)
+      onSend(trimmed, selectedEndpoint.id, currentModel, selectedMode)
       setInput('')
     }
   }
@@ -52,6 +66,11 @@ export function MessageInput({ onSend, disabled, endpoints, selectedEndpointId, 
     <div className="border-t border-border bg-background/95 backdrop-blur-sm">
       <div className="flex flex-col gap-2 p-3 md:p-4">
         <div className="flex gap-2">
+          <ModeSelector
+            selectedMode={selectedMode}
+            onSelect={onModeChange}
+            disabled={disabled || modeLocked}
+          />
           <EndpointSelector
             endpoints={endpoints}
             selectedEndpoint={selectedEndpoint}
