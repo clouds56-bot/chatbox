@@ -16,9 +16,25 @@ export interface Message {
 export interface Conversation {
   id: string
   title: string
+  mode?: ModeType
   messages: Message[]
   createdAt: number
   updatedAt: number
+}
+
+export type ModeType = 'ask' | 'chat' | 'research'
+
+export interface ModeTool {
+  id: string
+  name: string
+  description: string
+}
+
+export interface ModeConfig {
+  id: ModeType
+  label: string
+  systemPrompt: string
+  tools: ModeTool[]
 }
 
 export type ProviderType = 'openai' | 'z-ai' | 'copilot' | 'localhost' | 'custom'

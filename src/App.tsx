@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
-import { Conversation, Message, EndpointConfig, OAuthToken } from '@/lib/types'
+import { Conversation, Message, EndpointConfig, OAuthToken, ModeType } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
+import { DEFAULT_MODE, isModeType } from '@/lib/modes'
 import { loadAppConfig, loadAppSession, saveAppConfig, saveAppSession } from '@/lib/persistence'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
@@ -24,6 +25,7 @@ function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [isStreaming, setIsStreaming] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
+  const [selectedMode, setSelectedMode] = useState<ModeType>(DEFAULT_MODE)
   const scrollRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
@@ -54,22 +56,35 @@ function App() {
         const newConversation: Conversation = {
           id: uuidv4(),
           title: 'New Chat',
+          mode: DEFAULT_MODE,
           messages: [],
           createdAt: Date.now(),
           updatedAt: Date.now()
         }
         setConversations([newConversation])
         setCurrentConversationId(newConversation.id)
+        setSelectedMode(DEFAULT_MODE)
       } else {
-        setConversations(storedSession.conversations)
+        const normalizedConversations = storedSession.conversations.map((conversation) => ({
+          ...conversation,
+          mode: conversation.mode && isModeType(conversation.mode)
+            ? conversation.mode
+            : DEFAULT_MODE
+        }))
+
+        setConversations(normalizedConversations)
         const sessionConversationExists = storedSession.currentConversationId
-          ? storedSession.conversations.some(c => c.id === storedSession.currentConversationId)
+          ? normalizedConversations.some(c => c.id === storedSession.currentConversationId)
           : false
-        setCurrentConversationId(
+        const nextConversationId = (
           sessionConversationExists
             ? storedSession.currentConversationId
-            : storedSession.conversations[0].id
+            : normalizedConversations[0].id
         )
+
+        const nextConversation = normalizedConversations.find(c => c.id === nextConversationId)
+        setCurrentConversationId(nextConversationId)
+        setSelectedMode(nextConversation?.mode ?? DEFAULT_MODE)
       }
 
       setIsHydrated(true)
@@ -81,12 +96,14 @@ function App() {
         const newConversation: Conversation = {
           id: uuidv4(),
           title: 'New Chat',
+          mode: DEFAULT_MODE,
           messages: [],
           createdAt: Date.now(),
           updatedAt: Date.now()
         }
         setConversations([newConversation])
         setCurrentConversationId(newConversation.id)
+        setSelectedMode(DEFAULT_MODE)
         setIsHydrated(true)
       }
     })
@@ -222,16 +239,18 @@ function App() {
     }
   }, [isStreaming])
 
-  const createNewConversation = () => {
+  const createNewConversation = (mode: ModeType = DEFAULT_MODE) => {
     const newConv: Conversation = {
       id: uuidv4(),
       title: 'New Chat',
+      mode,
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now()
     }
     setConversations(current => [...(current ?? []), newConv])
     setCurrentConversationId(newConv.id)
+    setSelectedMode(mode)
   }
 
   const deleteConversation = (id: string) => {
@@ -242,15 +261,18 @@ function App() {
         const newConv: Conversation = {
           id: uuidv4(),
           title: 'New Chat',
+          mode: DEFAULT_MODE,
           messages: [],
           createdAt: Date.now(),
           updatedAt: Date.now()
         }
         setCurrentConversationId(newConv.id)
+        setSelectedMode(DEFAULT_MODE)
         return [newConv]
       }
       if (id === currentConversationId) {
         setCurrentConversationId(filtered[0].id)
+        setSelectedMode(filtered[0].mode ?? DEFAULT_MODE)
       }
       return filtered
     })
@@ -263,7 +285,12 @@ function App() {
     )
   }
 
-  const handleSendMessage = async (content: string, endpointId: string, modelName?: string) => {
+  const handleSendMessage = async (
+    content: string,
+    endpointId: string,
+    modelName?: string,
+    mode?: ModeType
+  ) => {
     const endpoint = safeEndpoints.find(e => e.id === endpointId)
     
     if (!endpoint) {
@@ -289,6 +316,7 @@ function App() {
     if (!currentConversationId) return
 
     const actualModelName = modelName || endpoint.modelName
+    const activeMode = mode ?? currentConversation?.mode ?? selectedMode
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -303,6 +331,7 @@ function App() {
         c.id === currentConversationId
           ? {
               ...c,
+              mode: c.mode ?? activeMode,
               messages: [...c.messages, userMessage],
               updatedAt: Date.now()
             }
@@ -331,6 +360,7 @@ function App() {
         c.id === currentConversationId
           ? {
               ...c,
+              mode: c.mode ?? activeMode,
               messages: [...c.messages, assistantMessage]
             }
           : c
@@ -351,6 +381,7 @@ function App() {
         content,
         conversationHistory,
         endpointWithModel,
+        activeMode,
         (token: string, type?: 'content' | 'thinking') => {
           setConversations(current =>
             (current ?? []).map(c =>
@@ -435,16 +466,34 @@ function App() {
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id)
+    const conversation = safeConversations.find(c => c.id === id)
+    setSelectedMode(conversation?.mode ?? DEFAULT_MODE)
     if (isMobile) {
       setSidebarOpen(false)
     }
   }
 
   const handleNewConversation = () => {
-    createNewConversation()
+    createNewConversation(DEFAULT_MODE)
     if (isMobile) {
       setSidebarOpen(false)
     }
+  }
+
+  const handleModeChange = (mode: ModeType) => {
+    if (!currentConversationId) {
+      setSelectedMode(mode)
+      return
+    }
+
+    setSelectedMode(mode)
+    setConversations(current =>
+      (current ?? []).map(c =>
+        c.id === currentConversationId && c.messages.length === 0
+          ? { ...c, mode }
+          : c
+      )
+    )
   }
 
   if (window.location.pathname === '/oauth/callback') {
@@ -522,6 +571,9 @@ function App() {
               endpoints={safeEndpoints}
               selectedEndpointId={selectedEndpointId}
               onEndpointChange={setSelectedEndpointId}
+              selectedMode={selectedMode}
+              onModeChange={handleModeChange}
+              modeLocked={(currentConversation?.messages.length ?? 0) > 0}
             />
           )}
         </div>

@@ -1,13 +1,19 @@
 import { EndpointConfig } from './types'
 import { getAuthorizationHeader } from './oauth'
+import { getModeConfig } from './modes'
+import { ModeType } from './types'
 
 export async function sendMessage(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
   config: EndpointConfig,
+  mode: ModeType,
   onToken: (token: string, type?: 'content' | 'thinking') => void
 ): Promise<void> {
+  const modeConfig = getModeConfig(mode)
+
   const messages = [
+    { role: 'system', content: modeConfig.systemPrompt },
     ...conversationHistory,
     { role: 'user', content: message }
   ]
@@ -28,6 +34,7 @@ export async function sendMessage(
     body: JSON.stringify({
       model: config.modelName,
       messages,
+      tools: modeConfig.tools,
       temperature: config.temperature ?? 0.7,
       max_tokens: config.maxTokens ?? 2000,
       stream: true
