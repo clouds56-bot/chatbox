@@ -8,6 +8,10 @@ async function tauriInvoke<T>(command: string, args?: Record<string, unknown>): 
   return invoke<T>(command, args)
 }
 
+function isTauriRuntime(): boolean {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+}
+
 export async function sendMessage(
   message: string,
   conversationHistory: Array<{ role: string; content: string }>,
@@ -36,6 +40,10 @@ export async function sendMessage(
   const shouldUseToolLoop = modeConfig.tools.some(tool => tool.name.startsWith('fs:'))
 
   if (shouldUseToolLoop) {
+    if (!isTauriRuntime()) {
+      throw new Error('Research mode filesystem tools require the Tauri desktop runtime.')
+    }
+
     const response = await tauriInvoke<ToolLoopResponse>('execute_tool_loop', {
       request: {
         apiEndpoint: config.apiEndpoint,

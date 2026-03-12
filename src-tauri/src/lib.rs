@@ -18,6 +18,9 @@ const DEFAULT_LIST_LIMIT: usize = 200;
 const DEFAULT_GREP_LIMIT: usize = 100;
 const DEFAULT_READ_LIMIT: usize = 200;
 const MAX_READ_BYTES: u64 = 512 * 1024;
+const MAX_GREP_FILE_BYTES: u64 = 512 * 1024;
+const MAX_GREP_TOTAL_BYTES: u64 = 4 * 1024 * 1024;
+const MAX_GREP_FILES_SCANNED: usize = 5000;
 
 fn ensure_parent_dir(path: &Path) -> Result<(), String> {
     if let Some(parent) = path.parent() {
@@ -338,10 +341,12 @@ fn build_openai_tools(tools: &[ModeTool]) -> Vec<Value> {
 }
 
 fn relative_display_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/")
+    let relative = path.strip_prefix(root).unwrap_or(path);
+    if relative.as_os_str().is_empty() {
+        ".".to_string()
+    } else {
+        relative.to_string_lossy().replace('\\', "/")
+    }
 }
 
 fn build_globset(pattern: Option<&str>) -> Result<Option<GlobSet>, String> {
@@ -454,10 +459,18 @@ fn execute_fs_grep(root: &Path, args: Value) -> Result<Value, String> {
     let limit = input.limit.unwrap_or(DEFAULT_GREP_LIMIT).min(1000);
     let mut matches = Vec::new();
     let mut truncated = false;
+    let mut files_scanned = 0usize;
+    let mut bytes_scanned = 0u64;
 
     for entry in WalkDir::new(&path).into_iter().filter_map(Result::ok) {
         if !entry.file_type().is_file() {
             continue;
+        }
+
+        files_scanned += 1;
+        if files_scanned > MAX_GREP_FILES_SCANNED {
+            truncated = true;
+            break;
         }
 
         let relative = relative_display_path(root, entry.path());
@@ -466,6 +479,20 @@ fn execute_fs_grep(root: &Path, args: Value) -> Result<Value, String> {
                 continue;
             }
         }
+
+        let metadata = match fs::metadata(entry.path()) {
+            Ok(metadata) => metadata,
+            Err(_) => continue,
+        };
+        let file_size = metadata.len();
+        if file_size > MAX_GREP_FILE_BYTES {
+            continue;
+        }
+        if bytes_scanned.saturating_add(file_size) > MAX_GREP_TOTAL_BYTES {
+            truncated = true;
+            break;
+        }
+        bytes_scanned = bytes_scanned.saturating_add(file_size);
 
         let content = match fs::read_to_string(entry.path()) {
             Ok(content) => content,
