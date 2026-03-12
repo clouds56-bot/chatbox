@@ -19,12 +19,12 @@ export function ConversationSidebar({
   onDeleteConversation
 }: ConversationSidebarProps) {
   return (
-    <div className="w-full h-full md:w-64 border-r border-border bg-muted flex flex-col">
+    <div className="h-full w-full border-r border-border bg-muted flex flex-col">
       <div className="p-3 border-b border-border">
         <NewChatButton onClick={onNewConversation} />
       </div>
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-1">
           {conversations.map((conversation) => (
             <ConversationListItem

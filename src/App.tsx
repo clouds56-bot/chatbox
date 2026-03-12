@@ -13,6 +13,8 @@ import { EmptyState } from '@/components/widgets/EmptyState'
 import { SystemPromptPanel } from '@/components/widgets/SystemPromptPanel'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Button } from '@/components/ui/button'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { toast, Toaster } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -185,6 +187,10 @@ function App() {
   }, [currentConversationId])
 
   useEffect(() => {
+    shouldAutoScrollRef.current = true
+  }, [isMobile])
+
+  useEffect(() => {
     const viewport = getScrollViewport()
     if (!viewport) {
       return
@@ -200,7 +206,7 @@ function App() {
     return () => {
       viewport.removeEventListener('scroll', handleScroll)
     }
-  }, [currentConversationId, isHydrated])
+  }, [currentConversationId, isHydrated, isMobile])
 
   useEffect(() => {
     const viewport = getScrollViewport()
@@ -213,7 +219,7 @@ function App() {
     }
 
     viewport.scrollTop = viewport.scrollHeight
-  }, [currentConversation?.messages, isStreaming])
+  }, [currentConversation?.messages, isStreaming, isMobile])
 
   const createNewConversation = (mode: ModeType = DEFAULT_MODE) => {
     const newConv: Conversation = {
@@ -475,6 +481,86 @@ function App() {
     )
   }
 
+  const renderMessageList = () => (
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-6 space-y-4">
+      {safeEndpoints.length === 0 && (
+        <EmptyState
+          type="no-endpoints"
+          onConfigureClick={() => setEndpointsOpen(true)}
+        />
+      )}
+      {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
+        <EmptyState
+          type="no-messages"
+          endpointName={selectedEndpoint?.name}
+        />
+      )}
+      {currentConversation?.messages.map(message => {
+        const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
+        return (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
+          />
+        )
+      })}
+    </div>
+  )
+
+  const renderComposer = (showEndpointFallback: boolean) => {
+    if (safeEndpoints.length > 0) {
+      return (
+        <MessageInput
+          onSend={handleSendMessage}
+          disabled={isStreaming}
+          endpoints={safeEndpoints}
+          selectedEndpointId={selectedEndpointId}
+          onEndpointChange={setSelectedEndpointId}
+          selectedMode={selectedMode}
+          onModeChange={handleModeChange}
+          modeLocked={(currentConversation?.messages.length ?? 0) > 0}
+        />
+      )
+    }
+
+    if (!showEndpointFallback) {
+      return null
+    }
+
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Button onClick={() => setEndpointsOpen(true)}>
+          Configure endpoint
+        </Button>
+      </div>
+    )
+  }
+
+  const renderChatBody = (onMenuClick?: () => void) => (
+    <>
+      <ChatHeader
+        title={currentConversation?.title || 'AI Chat'}
+        endpoint={selectedEndpoint}
+        onSettingsClick={() => setEndpointsOpen(true)}
+        onMenuClick={onMenuClick}
+      />
+
+      <SystemPromptPanel
+        modeLabel={modeConfig.label}
+        systemPrompt={modeConfig.systemPrompt}
+      />
+
+      <ScrollArea
+        key={isMobile ? 'mobile-scroll-area' : 'desktop-scroll-area'}
+        ref={scrollRef}
+        className="flex-1 min-h-0"
+      >
+        {renderMessageList()}
+      </ScrollArea>
+    </>
+  )
+
   if (window.location.pathname === '/oauth/callback') {
     return <OAuthCallback />
   }
@@ -482,20 +568,10 @@ function App() {
   return (
     <>
       <Toaster position="top-right" />
-      <div className="flex h-screen bg-background text-foreground">
+      <div className="h-screen bg-background text-foreground">
         {!isMobile && (
-          <ConversationSidebar
-            conversations={safeConversations}
-            currentConversationId={currentConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewConversation={handleNewConversation}
-            onDeleteConversation={deleteConversation}
-          />
-        )}
-
-        {isMobile && (
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent side="left" className="p-0 w-72">
+          <ResizablePanelGroup direction="horizontal" className="h-full w-full">
+            <ResizablePanel defaultSize={22} minSize={16} maxSize={34}>
               <ConversationSidebar
                 conversations={safeConversations}
                 currentConversationId={currentConversationId}
@@ -503,63 +579,44 @@ function App() {
                 onNewConversation={handleNewConversation}
                 onDeleteConversation={deleteConversation}
               />
-            </SheetContent>
-          </Sheet>
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={78} minSize={50}>
+              <ResizablePanelGroup direction="vertical" className="h-full">
+                <ResizablePanel defaultSize={74} minSize={45}>
+                  <div className="flex h-full min-h-0 flex-col bg-background">
+                    {renderChatBody()}
+                  </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle />
+                <ResizablePanel defaultSize={26} minSize={18} maxSize={48}>
+                  <div className="h-full border-t border-border/80 bg-card/20">
+                    {renderComposer(true)}
+                  </div>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         )}
 
-        <div className="flex-1 flex flex-col min-w-0">
-          <ChatHeader
-            title={currentConversation?.title || 'AI Chat'}
-            endpoint={selectedEndpoint}
-            onSettingsClick={() => setEndpointsOpen(true)}
-            onMenuClick={isMobile ? () => setSidebarOpen(true) : undefined}
-          />
-
-          <SystemPromptPanel
-            modeLabel={modeConfig.label}
-            systemPrompt={modeConfig.systemPrompt}
-          />
-
-          <ScrollArea ref={scrollRef} className="flex-1">
-            <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
-              {safeEndpoints.length === 0 && (
-                <EmptyState
-                  type="no-endpoints"
-                  onConfigureClick={() => setEndpointsOpen(true)}
+        {isMobile && (
+          <div className="flex h-full min-w-0 flex-col">
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetContent side="left" className="p-0 w-72">
+                <ConversationSidebar
+                  conversations={safeConversations}
+                  currentConversationId={currentConversationId}
+                  onSelectConversation={handleSelectConversation}
+                  onNewConversation={handleNewConversation}
+                  onDeleteConversation={deleteConversation}
                 />
-              )}
-              {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
-                <EmptyState
-                  type="no-messages"
-                  endpointName={selectedEndpoint?.name}
-                />
-              )}
-              {currentConversation?.messages.map(message => {
-                const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
-                return (
-                  <MessageBubble 
-                    key={message.id} 
-                    message={message}
-                    endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
-                  />
-                )
-              })}
-            </div>
-          </ScrollArea>
+              </SheetContent>
+            </Sheet>
 
-          {safeEndpoints.length > 0 && (
-            <MessageInput 
-              onSend={handleSendMessage} 
-              disabled={isStreaming}
-              endpoints={safeEndpoints}
-              selectedEndpointId={selectedEndpointId}
-              onEndpointChange={setSelectedEndpointId}
-              selectedMode={selectedMode}
-              onModeChange={handleModeChange}
-              modeLocked={(currentConversation?.messages.length ?? 0) > 0}
-            />
-          )}
-        </div>
+            {renderChatBody(() => setSidebarOpen(true))}
+            {renderComposer(false)}
+          </div>
+        )}
 
         <EndpointsDialog
           open={endpointsOpen}
