@@ -187,6 +187,10 @@ function App() {
   }, [currentConversationId])
 
   useEffect(() => {
+    shouldAutoScrollRef.current = true
+  }, [isMobile])
+
+  useEffect(() => {
     const viewport = getScrollViewport()
     if (!viewport) {
       return
@@ -202,7 +206,7 @@ function App() {
     return () => {
       viewport.removeEventListener('scroll', handleScroll)
     }
-  }, [currentConversationId, isHydrated])
+  }, [currentConversationId, isHydrated, isMobile])
 
   useEffect(() => {
     const viewport = getScrollViewport()
@@ -215,7 +219,7 @@ function App() {
     }
 
     viewport.scrollTop = viewport.scrollHeight
-  }, [currentConversation?.messages, isStreaming])
+  }, [currentConversation?.messages, isStreaming, isMobile])
 
   const createNewConversation = (mode: ModeType = DEFAULT_MODE) => {
     const newConv: Conversation = {
@@ -477,6 +481,86 @@ function App() {
     )
   }
 
+  const renderMessageList = () => (
+    <div className="mx-auto w-full max-w-4xl p-4 md:p-6 space-y-4">
+      {safeEndpoints.length === 0 && (
+        <EmptyState
+          type="no-endpoints"
+          onConfigureClick={() => setEndpointsOpen(true)}
+        />
+      )}
+      {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
+        <EmptyState
+          type="no-messages"
+          endpointName={selectedEndpoint?.name}
+        />
+      )}
+      {currentConversation?.messages.map(message => {
+        const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
+        return (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
+          />
+        )
+      })}
+    </div>
+  )
+
+  const renderComposer = (showEndpointFallback: boolean) => {
+    if (safeEndpoints.length > 0) {
+      return (
+        <MessageInput
+          onSend={handleSendMessage}
+          disabled={isStreaming}
+          endpoints={safeEndpoints}
+          selectedEndpointId={selectedEndpointId}
+          onEndpointChange={setSelectedEndpointId}
+          selectedMode={selectedMode}
+          onModeChange={handleModeChange}
+          modeLocked={(currentConversation?.messages.length ?? 0) > 0}
+        />
+      )
+    }
+
+    if (!showEndpointFallback) {
+      return null
+    }
+
+    return (
+      <div className="flex h-full items-center justify-center p-6">
+        <Button onClick={() => setEndpointsOpen(true)}>
+          Configure endpoint
+        </Button>
+      </div>
+    )
+  }
+
+  const renderChatBody = (onMenuClick?: () => void) => (
+    <>
+      <ChatHeader
+        title={currentConversation?.title || 'AI Chat'}
+        endpoint={selectedEndpoint}
+        onSettingsClick={() => setEndpointsOpen(true)}
+        onMenuClick={onMenuClick}
+      />
+
+      <SystemPromptPanel
+        modeLabel={modeConfig.label}
+        systemPrompt={modeConfig.systemPrompt}
+      />
+
+      <ScrollArea
+        key={isMobile ? 'mobile-scroll-area' : 'desktop-scroll-area'}
+        ref={scrollRef}
+        className="flex-1 min-h-0"
+      >
+        {renderMessageList()}
+      </ScrollArea>
+    </>
+  )
+
   if (window.location.pathname === '/oauth/callback') {
     return <OAuthCallback />
   }
@@ -501,66 +585,13 @@ function App() {
               <ResizablePanelGroup direction="vertical" className="h-full">
                 <ResizablePanel defaultSize={74} minSize={45}>
                   <div className="flex h-full min-h-0 flex-col bg-background">
-                    <ChatHeader
-                      title={currentConversation?.title || 'AI Chat'}
-                      endpoint={selectedEndpoint}
-                      onSettingsClick={() => setEndpointsOpen(true)}
-                    />
-
-                    <SystemPromptPanel
-                      modeLabel={modeConfig.label}
-                      systemPrompt={modeConfig.systemPrompt}
-                    />
-
-                    <ScrollArea ref={scrollRef} className="flex-1 min-h-0">
-                      <div className="mx-auto w-full max-w-4xl p-4 md:p-6 space-y-4">
-                        {safeEndpoints.length === 0 && (
-                          <EmptyState
-                            type="no-endpoints"
-                            onConfigureClick={() => setEndpointsOpen(true)}
-                          />
-                        )}
-                        {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
-                          <EmptyState
-                            type="no-messages"
-                            endpointName={selectedEndpoint?.name}
-                          />
-                        )}
-                        {currentConversation?.messages.map(message => {
-                          const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
-                          return (
-                            <MessageBubble
-                              key={message.id}
-                              message={message}
-                              endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
-                            />
-                          )
-                        })}
-                      </div>
-                    </ScrollArea>
+                    {renderChatBody()}
                   </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={26} minSize={18} maxSize={48}>
                   <div className="h-full border-t border-border/80 bg-card/20">
-                    {safeEndpoints.length > 0 ? (
-                      <MessageInput
-                        onSend={handleSendMessage}
-                        disabled={isStreaming}
-                        endpoints={safeEndpoints}
-                        selectedEndpointId={selectedEndpointId}
-                        onEndpointChange={setSelectedEndpointId}
-                        selectedMode={selectedMode}
-                        onModeChange={handleModeChange}
-                        modeLocked={(currentConversation?.messages.length ?? 0) > 0}
-                      />
-                    ) : (
-                      <div className="flex h-full items-center justify-center p-6">
-                        <Button onClick={() => setEndpointsOpen(true)}>
-                          Configure endpoint
-                        </Button>
-                      </div>
-                    )}
+                    {renderComposer(true)}
                   </div>
                 </ResizablePanel>
               </ResizablePanelGroup>
@@ -582,57 +613,8 @@ function App() {
               </SheetContent>
             </Sheet>
 
-            <ChatHeader
-              title={currentConversation?.title || 'AI Chat'}
-              endpoint={selectedEndpoint}
-              onSettingsClick={() => setEndpointsOpen(true)}
-              onMenuClick={() => setSidebarOpen(true)}
-            />
-
-            <SystemPromptPanel
-              modeLabel={modeConfig.label}
-              systemPrompt={modeConfig.systemPrompt}
-            />
-
-            <ScrollArea ref={scrollRef} className="flex-1 min-h-0">
-              <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
-                {safeEndpoints.length === 0 && (
-                  <EmptyState
-                    type="no-endpoints"
-                    onConfigureClick={() => setEndpointsOpen(true)}
-                  />
-                )}
-                {safeEndpoints.length > 0 && currentConversation?.messages.length === 0 && (
-                  <EmptyState
-                    type="no-messages"
-                    endpointName={selectedEndpoint?.name}
-                  />
-                )}
-                {currentConversation?.messages.map(message => {
-                  const messageEndpoint = safeEndpoints.find(e => e.id === message.endpointId)
-                  return (
-                    <MessageBubble
-                      key={message.id}
-                      message={message}
-                      endpoint={message.role === 'assistant' ? messageEndpoint : undefined}
-                    />
-                  )
-                })}
-              </div>
-            </ScrollArea>
-
-            {safeEndpoints.length > 0 && (
-              <MessageInput
-                onSend={handleSendMessage}
-                disabled={isStreaming}
-                endpoints={safeEndpoints}
-                selectedEndpointId={selectedEndpointId}
-                onEndpointChange={setSelectedEndpointId}
-                selectedMode={selectedMode}
-                onModeChange={handleModeChange}
-                modeLocked={(currentConversation?.messages.length ?? 0) > 0}
-              />
-            )}
+            {renderChatBody(() => setSidebarOpen(true))}
+            {renderComposer(false)}
           </div>
         )}
 

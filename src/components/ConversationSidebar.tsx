@@ -24,7 +24,7 @@ export function ConversationSidebar({
         <NewChatButton onClick={onNewConversation} />
       </div>
       
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 min-h-0">
         <div className="p-2 space-y-1">
           {conversations.map((conversation) => (
             <ConversationListItem
