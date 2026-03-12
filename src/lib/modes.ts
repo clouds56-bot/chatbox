@@ -19,12 +19,53 @@ export const MODES: Record<ModeType, ModeConfig> = {
     id: 'research',
     label: 'Research',
     systemPrompt:
-      'You are a research assistant. Provide structured analysis, note assumptions, compare alternatives, and include concise supporting rationale.',
+      'You are a research assistant with access to workspace file tools. Inspect the codebase before answering, use tools when details are missing, and provide structured analysis with concise supporting rationale.',
     tools: [
       {
-        id: 'synthesis',
-        name: 'Synthesis',
-        description: 'Break complex questions into key findings and recommendations.'
+        id: 'fs:list',
+        name: 'fs:list',
+        description: 'List files and directories inside the workspace.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            recursive: { type: 'boolean' },
+            limit: { type: 'integer' }
+          },
+          required: ['path'],
+          additionalProperties: false
+        }
+      },
+      {
+        id: 'fs:read',
+        name: 'fs:read',
+        description: 'Read lines from a workspace file.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            path: { type: 'string' },
+            offset: { type: 'integer' },
+            limit: { type: 'integer' }
+          },
+          required: ['path'],
+          additionalProperties: false
+        }
+      },
+      {
+        id: 'fs:grep',
+        name: 'fs:grep',
+        description: 'Search workspace file contents with a regex pattern.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            pattern: { type: 'string' },
+            path: { type: 'string' },
+            include: { type: 'string' },
+            limit: { type: 'integer' }
+          },
+          required: ['pattern', 'path'],
+          additionalProperties: false
+        }
       }
     ]
   }

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { Conversation, Message, EndpointConfig, OAuthToken, ModeType } from '@/lib/types'
 import { sendMessage } from '@/lib/api'
-import { DEFAULT_MODE, isModeType } from '@/lib/modes'
+import { DEFAULT_MODE, getModeConfig, isModeType } from '@/lib/modes'
 import { loadAppConfig, loadAppSession, saveAppConfig, saveAppSession } from '@/lib/persistence'
 import { ConversationSidebar } from '@/components/ConversationSidebar'
 import { MessageBubble } from '@/components/MessageBubble'
@@ -10,6 +10,7 @@ import { EndpointsDialog } from '@/components/EndpointsDialog'
 import { OAuthCallback } from '@/components/OAuthCallback'
 import { ChatHeader } from '@/components/widgets/ChatHeader'
 import { EmptyState } from '@/components/widgets/EmptyState'
+import { SystemPromptPanel } from '@/components/widgets/SystemPromptPanel'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { toast, Toaster } from 'sonner'
@@ -27,7 +28,7 @@ function App() {
   const [isHydrated, setIsHydrated] = useState(false)
   const [selectedMode, setSelectedMode] = useState<ModeType>(DEFAULT_MODE)
   const scrollRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const shouldAutoScrollRef = useRef(true)
   const isMobile = useIsMobile()
 
   const safeConversations = useMemo(() => conversations ?? [], [conversations])
@@ -170,74 +171,49 @@ function App() {
     return () => window.removeEventListener('message', handleOAuthMessage)
   }, [])
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [currentConversation?.messages])
+  const getScrollViewport = () => {
+    return scrollRef.current?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+  }
+
+  const isNearBottom = (viewport: HTMLElement, threshold = 96) => {
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+    return distanceFromBottom <= threshold
+  }
 
   useEffect(() => {
-    if (!isStreaming) {
-      return
-    }
+    shouldAutoScrollRef.current = true
+  }, [currentConversationId])
 
-    const scrollRoot = scrollRef.current
-    if (!scrollRoot) {
-      return
-    }
-
-    const viewport = scrollRoot.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]')
+  useEffect(() => {
+    const viewport = getScrollViewport()
     if (!viewport) {
       return
     }
 
-    const lockToBottom = () => {
-      viewport.scrollTop = viewport.scrollHeight
-    }
-
-    const handleWheel = (event: WheelEvent) => {
-      if (event.deltaY < 0) {
-        event.preventDefault()
-        lockToBottom()
-      }
-    }
-
-    const handleTouchMove = (event: TouchEvent) => {
-      event.preventDefault()
-      lockToBottom()
-    }
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (['ArrowUp', 'PageUp', 'Home'].includes(event.key)) {
-        event.preventDefault()
-        lockToBottom()
-      }
-    }
-
     const handleScroll = () => {
-      const maxScrollTop = viewport.scrollHeight - viewport.clientHeight
-      if (viewport.scrollTop < maxScrollTop) {
-        viewport.scrollTop = maxScrollTop
-      }
+      shouldAutoScrollRef.current = isNearBottom(viewport)
     }
 
-    lockToBottom()
-    viewport.addEventListener('wheel', handleWheel, { passive: false })
-    viewport.addEventListener('touchmove', handleTouchMove, { passive: false })
-    viewport.addEventListener('scroll', handleScroll)
-    window.addEventListener('keydown', handleKeyDown)
-
-    let frameId = window.requestAnimationFrame(function pinToBottom() {
-      lockToBottom()
-      frameId = window.requestAnimationFrame(pinToBottom)
-    })
+    handleScroll()
+    viewport.addEventListener('scroll', handleScroll, { passive: true })
 
     return () => {
-      window.cancelAnimationFrame(frameId)
-      viewport.removeEventListener('wheel', handleWheel)
-      viewport.removeEventListener('touchmove', handleTouchMove)
       viewport.removeEventListener('scroll', handleScroll)
-      window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isStreaming])
+  }, [currentConversationId, isHydrated])
+
+  useEffect(() => {
+    const viewport = getScrollViewport()
+    if (!viewport) {
+      return
+    }
+
+    if (!shouldAutoScrollRef.current) {
+      return
+    }
+
+    viewport.scrollTop = viewport.scrollHeight
+  }, [currentConversation?.messages, isStreaming])
 
   const createNewConversation = (mode: ModeType = DEFAULT_MODE) => {
     const newConv: Conversation = {
@@ -314,6 +290,8 @@ function App() {
     }
 
     if (!currentConversationId) return
+
+    shouldAutoScrollRef.current = true
 
     const actualModelName = modelName || endpoint.modelName
     const activeMode = mode ?? currentConversation?.mode ?? selectedMode
@@ -463,6 +441,7 @@ function App() {
   }
 
   const selectedEndpoint = safeEndpoints.find(e => e.id === selectedEndpointId) || defaultEndpoint
+  const modeConfig = getModeConfig(selectedMode)
 
   const handleSelectConversation = (id: string) => {
     setCurrentConversationId(id)
@@ -536,6 +515,11 @@ function App() {
             onMenuClick={isMobile ? () => setSidebarOpen(true) : undefined}
           />
 
+          <SystemPromptPanel
+            modeLabel={modeConfig.label}
+            systemPrompt={modeConfig.systemPrompt}
+          />
+
           <ScrollArea ref={scrollRef} className="flex-1">
             <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-4">
               {safeEndpoints.length === 0 && (
@@ -560,7 +544,6 @@ function App() {
                   />
                 )
               })}
-              <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
